@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SecureQuiz — Тест</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root{--ink:#1a1a2e;--green:#16a34a;--blue:#2563eb;--accent:#c84b31;--shadow-lg:0 8px 40px rgba(26,26,46,.18);}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{min-height:100vh;min-height:100dvh;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;transition:background .4s;overflow-x:hidden;-webkit-user-select:none;user-select:none;}
+
+/* Pastel backgrounds */
+body[data-bg="0"]{background:#fde8e8;}body[data-bg="1"]{background:#e8f4fd;}
+body[data-bg="2"]{background:#e8fde8;}body[data-bg="3"]{background:#fdf4e8;}
+body[data-bg="4"]{background:#f0e8fd;}body[data-bg="5"]{background:#fde8f4;}
+body[data-bg="6"]{background:#e8fdfa;}body[data-bg="7"]{background:#fdfbe8;}
+body[data-bg="8"]{background:#ffe8d6;}body[data-bg="9"]{background:#e8eafd;}
+
+/* TOP BAR */
+#bar{position:fixed;top:0;left:0;right:0;z-index:50;height:52px;background:rgba(26,26,46,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;gap:10px;}
+#barCounter{font-family:monospace;font-size:.8rem;color:rgba(255,255,255,.55);}
+#barTimer{font-family:monospace;font-size:1.35rem;font-weight:600;letter-spacing:.03em;}
+#barTimer.warn{color:#fbbf24;animation:tp .8s infinite;}
+#barTimer.crit{color:#ef4444;}
+@keyframes tp{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes spin{to{transform:rotate(360deg)}}
+#barDots{display:flex;gap:5px;}
+.vd{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.15);}
+.vd.hit{background:#ef4444;box-shadow:0 0 5px #ef4444;}
+#progBar{position:fixed;top:52px;left:0;right:0;height:3px;background:rgba(0,0,0,.08);z-index:49;}
+#prog{height:100%;background:rgba(26,26,46,.4);transition:width .4s;}
+
+/* MAIN BODY */
+#body{padding:62px 14px 24px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+
+/* GLASS CARD */
+.glass{background:rgba(255,255,255,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:18px;border:1px solid rgba(255,255,255,.65);box-shadow:var(--shadow-lg);}
+
+/* INTRO */
+.intro-wrap{width:100%;max-width:460px;}
+.intro-card{padding:28px 24px;text-align:center;}
+.intro-emoji{font-size:2.8rem;margin-bottom:12px;}
+.intro-title{font-size:1.4rem;font-weight:800;margin-bottom:5px;color:var(--ink);}
+.intro-meta{font-size:.82rem;color:rgba(26,26,46,.45);margin-bottom:18px;}
+label.fl{display:block;font-size:.65rem;font-weight:700;color:rgba(26,26,46,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;text-align:left;}
+input[type=text]{width:100%;background:rgba(255,255,255,.95);border:1.5px solid rgba(26,26,46,.15);border-radius:9px;padding:11px 13px;font-family:inherit;font-size:.95rem;color:var(--ink);outline:none;margin-bottom:12px;-webkit-appearance:none;}
+input[type=text]:focus{border-color:var(--ink);}
+.intro-rules{background:rgba(26,26,46,.05);border-radius:9px;padding:12px 14px;text-align:left;margin:0 0 16px;font-size:.79rem;line-height:1.85;}
+.btn-start{width:100%;padding:13px;background:var(--ink);color:#fff;border:none;border-radius:11px;font-family:inherit;font-size:.92rem;font-weight:700;cursor:pointer;}
+.btn-start:active{opacity:.85;}
+
+/* QUESTION */
+.q-wrap{width:100%;max-width:620px;}
+.q-card{padding:22px 18px;}
+.q-text{font-size:1.08rem;font-weight:800;line-height:1.5;margin-bottom:16px;color:#1e3a5f;background:rgba(255,255,255,.7);border-radius:10px;padding:13px 15px;border-left:4px solid #3b82f6;}
+.q-img{width:100%;max-height:200px;object-fit:contain;border-radius:9px;margin-bottom:12px;display:block;}
+.multi-hint{font-size:.72rem;color:var(--blue);font-weight:600;margin-bottom:10px;font-style:italic;}
+
+/* OPTIONS — pastel colors per position */
+.opt{display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:12px;margin-bottom:8px;cursor:pointer;min-height:50px;border:2px solid transparent;transition:border-color .15s,transform .1s,opacity .1s;}
+.opt:nth-of-type(1){background:#fef3c7;}
+.opt:nth-of-type(2){background:#dbeafe;}
+.opt:nth-of-type(3){background:#dcfce7;}
+.opt:nth-of-type(4){background:#fce7f3;}
+.opt:nth-of-type(5){background:#ede9fe;}
+.opt:nth-of-type(6){background:#ffedd5;}
+.opt.active-touch{transform:scale(.97);opacity:.75;}
+.opt.selected{background:#1e40af!important;border-color:#1e40af!important;color:#fff;}
+.opt.selected-multi{border-color:#2563eb!important;box-shadow:0 0 0 2px rgba(37,99,235,.2);}
+.opt.disabled{pointer-events:none;cursor:default;}
+.opt-cb{width:20px;height:20px;border-radius:5px;border:2px solid rgba(37,99,235,.4);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff;font-size:13px;font-weight:800;color:#fff;transition:background .12s;}
+.opt-cb.checked{background:#2563eb;border-color:#2563eb;}
+.opt-txt{font-size:.9rem;font-weight:500;line-height:1.35;flex:1;}
+.opt-img{max-height:50px;max-width:80px;object-fit:contain;border-radius:6px;flex-shrink:0;}
+.confirm-btn{width:100%;margin-top:12px;padding:13px;background:#2563eb;color:#fff;border:none;border-radius:11px;font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;}
+.confirm-btn:active{opacity:.85;}
+
+/* PERQ TIMER */
+.perq-timer{text-align:center;font-family:monospace;font-size:1.5rem;font-weight:700;color:rgba(26,26,46,.3);margin-bottom:12px;}
+.perq-timer.warn{color:#d97706;}
+.perq-timer.crit{color:#ef4444;animation:tp .5s infinite;}
+
+/* RESULT */
+.result-wrap{width:100%;max-width:500px;}
+
+/* New result card */
+.result-card-new{background:rgba(255,255,255,.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:22px;border:1px solid rgba(255,255,255,.7);box-shadow:0 12px 48px rgba(26,26,46,.16);padding:24px 20px;text-align:center;}
+
+/* Motivational motto */
+.rc-motto-big{font-size:1.1rem;font-weight:800;color:rgba(26,26,46,.75);margin-bottom:16px;letter-spacing:-.01em;line-height:1.35;}
+
+/* Grade hero block */
+.rc-grade-hero{border-radius:20px;padding:24px 16px 18px;margin-bottom:16px;position:relative;}
+.rc-grade-label{font-size:.65rem;font-weight:900;letter-spacing:.3em;text-transform:uppercase;color:rgba(26,26,46,.38);margin-bottom:10px;}
+
+/* GIANT grade number — the centrepiece */
+.rc-grade-giant{
+  font-size:9rem;
+  font-weight:900;
+  line-height:.9;
+  font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;
+  letter-spacing:-.05em;
+  margin:0 auto 10px;
+  filter:drop-shadow(0 4px 16px currentColor);
+}
+
+.rc-pct{font-size:.88rem;font-weight:700;opacity:.65;margin-bottom:2px;}
+.rc-score{font-family:monospace;font-size:.82rem;color:rgba(26,26,46,.45);}
+.rc-stats{display:flex;align-items:center;background:rgba(255,255,255,.6);border-radius:13px;padding:14px 8px;margin-bottom:12px;gap:0;}
+.rc-stat{flex:1;text-align:center;}
+.rc-stat-val{font-size:1.75rem;font-weight:800;line-height:1;margin-bottom:3px;}
+.rc-stat-lbl{font-size:.62rem;color:rgba(26,26,46,.45);font-weight:600;}
+.rc-stat-div{width:1px;height:36px;background:rgba(26,26,46,.1);flex-shrink:0;}
+.rc-saved{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.74rem;color:rgba(26,26,46,.4);font-weight:600;margin-bottom:14px;background:rgba(22,163,74,.07);border-radius:8px;padding:8px 12px;}
+.viol-log{background:rgba(239,68,68,.07);border-radius:9px;padding:11px;margin-bottom:12px;text-align:left;}
+.viol-log-title{font-size:.72rem;font-weight:700;color:#ef4444;margin-bottom:6px;}
+.viol-item{font-size:.72rem;color:rgba(26,26,46,.5);padding:3px 0;border-bottom:1px solid rgba(239,68,68,.08);}
+.viol-item:last-child{border-bottom:none;}
+.btn-close{width:100%;padding:14px;background:var(--ink);color:#fff;border:none;border-radius:12px;font-family:inherit;font-size:.92rem;font-weight:700;cursor:pointer;letter-spacing:.01em;}
+.btn-close:active{opacity:.85;transform:scale(.98);}
+
+@media(max-width:480px){
+  .rc-grade-giant{font-size:7rem;}
+  .rc-motto-big{font-size:.98rem;}
+}
+
+/* SEC OVERLAY */
+#secOverlay{display:none;position:fixed;inset:0;background:#000;z-index:999;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px;color:#fff;}
+#secOverlay.show{display:flex;}
+.sec-icon{font-size:3.5rem;margin-bottom:14px;animation:shake .4s;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-12px)rotate(-3deg)}75%{transform:translateX(12px)rotate(3deg)}}
+.sec-main{font-size:1.25rem;font-weight:800;color:#ef4444;margin-bottom:8px;line-height:1.3;}
+.sec-sub{font-size:.92rem;font-weight:600;color:#fca5a5;margin-bottom:6px;}
+.sec-desc{color:rgba(255,100,100,.5);max-width:340px;line-height:1.7;margin-bottom:20px;font-size:.83rem;}
+.sec-dots{display:flex;gap:6px;justify-content:center;margin-bottom:18px;}
+.btn-cont{padding:11px 28px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;}
+
+/* MOOD CHECK */
+.mood-wrap{width:100%;max-width:460px;}
+.mood-card{padding:28px 22px;text-align:center;}
+.mood-title{font-size:1.25rem;font-weight:800;color:var(--ink);margin-bottom:6px;line-height:1.3;}
+.mood-sub{font-size:.83rem;color:rgba(26,26,46,.45);margin-bottom:22px;line-height:1.5;}
+.mood-emojis{display:flex;justify-content:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.mood-btn{width:62px;height:72px;border:2.5px solid transparent;border-radius:16px;background:rgba(255,255,255,.7);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:inherit;transition:transform .15s,border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;}
+.mood-btn:hover{transform:scale(1.08);}
+.mood-btn.selected{border-color:var(--ink);background:#fff;transform:scale(1.12);}
+.mood-emoji-icon{font-size:2rem;line-height:1;}
+.mood-label{font-size:.58rem;font-weight:700;color:rgba(26,26,46,.5);text-transform:uppercase;letter-spacing:.04em;}
+.mood-selected-msg{min-height:38px;font-size:.88rem;font-weight:700;color:var(--ink);margin-bottom:16px;transition:opacity .2s;}
+.btn-mood-next{width:100%;padding:13px;background:var(--ink);color:#fff;border:none;border-radius:11px;font-family:inherit;font-size:.92rem;font-weight:700;cursor:pointer;opacity:.4;transition:opacity .2s;}
+.btn-mood-next.ready{opacity:1;}
+.btn-mood-next.ready:active{opacity:.85;}
+
+
+#wmLayer{position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden;}
+.wm{position:absolute;color:rgba(26,26,46,.05);font-size:.88rem;font-weight:700;font-family:monospace;white-space:nowrap;transform:rotate(-28deg);user-select:none;}
+
+/* STOPPED */
+.stopped{text-align:center;padding:40px 20px;}
+.stopped h2{font-size:1.4rem;font-weight:800;margin-bottom:8px;color:var(--ink);}
+.stopped p{font-size:.85rem;color:rgba(26,26,46,.45);line-height:1.6;}
+
+@media(max-width:480px){
+  .q-text{font-size:.96rem;padding:11px 13px;}
+  .opt{padding:11px 12px;min-height:46px;}
+  .opt-txt{font-size:.86rem;}
+  #bar{height:48px;}
+  #barTimer{font-size:1.15rem;}
+  #body{padding-top:58px;}
+  #progBar{top:48px;}
+}
+</style>
+</head>
+<body data-bg="0">
+
+<div id="wmLayer"></div>
+
+<!-- SEC OVERLAY -->
+<div id="secOverlay">
+  <div class="sec-icon">🚨</div>
+  <div class="sec-main">Зафіксовано порушення<br>академічної доброчесності!</div>
+  <div class="sec-sub" id="secTitle"></div>
+  <div class="sec-desc" id="secDesc"></div>
+  <div class="sec-dots" id="secVdots"></div>
+  <button class="btn-cont" onclick="dismissSec()">Продовжити →</button>
+</div>
+
+<!-- TOP BAR -->
+<div id="bar" style="display:none;">
+  <div id="barCounter">1 / 1</div>
+  <div id="barTimer">00:00</div>
+  <div id="barDots"></div>
+</div>
+<div id="progBar" style="display:none;"><div id="prog" style="width:0%"></div></div>
+
+<!-- BODY -->
+<div id="body">
+  <div style="text-align:center;color:rgba(26,26,46,.35);">
+    <div style="font-size:2rem;margin-bottom:8px;">⏳</div>
+    <div style="font-size:.85rem;">Завантаження…</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── THEME ──
+function applyExamTheme(t){
+  if(!t)return;
+  const logo=t.logo||'🧪';
+  const name=t.name||'SecureQuiz';
+  // Update page title and favicon
+  document.title=name+' — Тест';
+  const isUrl=logo.startsWith('http')||logo.startsWith('/');
+  let fav=document.querySelector("link[rel~='icon']");
+  if(!fav){fav=document.createElement('link');fav.rel='icon';document.head.appendChild(fav);}
+  fav.href=isUrl?logo:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>"+encodeURIComponent(logo)+"</text></svg>";
+  // Store for use in intro rendering
+  window._examTheme={logo,name,isUrl};
+}
+function loadExamTheme(){
+  // Try localStorage first (fast)
+  try{
+    const t=JSON.parse(localStorage.getItem('sqpro_theme'));
+    if(t&&t.name)applyExamTheme(t);
+  }catch{}
+  // Then Firebase (authoritative)
+  if(db){
+    db.ref('config/theme').once('value',snap=>{
+      const t=snap.val();
+      if(t&&t.name){
+        localStorage.setItem('sqpro_theme',JSON.stringify(t));
+        applyExamTheme(t);
+        // Re-render intro emoji/title if already visible
+        const emojiEl=document.querySelector('.intro-emoji');
+        const titleEl=document.querySelector('.intro-title');
+        const t2=window._examTheme;
+        if(emojiEl&&t2){
+          if(t2.isUrl)emojiEl.innerHTML=`<img src="${t2.logo}" style="width:52px;height:52px;object-fit:contain;border-radius:12px;">`;
+          else emojiEl.textContent=t2.logo;
+        }
+        if(titleEl&&t2)titleEl.textContent=t2.name+' — '+payload?.title;
+      }
+    }).catch(()=>{});
+  }
+}
+
+
+// ══ БЛОК БЕЗ SESSION — одразу при завантаженні скрипта ══
+(function(){
+  const sid=new URLSearchParams(location.search).get('session');
+  if(!sid){
+    // Якщо відкрили exam.html напряму без параметра — показуємо заглушку
+    document.addEventListener('DOMContentLoaded',()=>{
+      document.body.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f5f0e8;font-family:system-ui;">
+        <div style="text-align:center;padding:40px 24px;max-width:360px;">
+          <div style="font-size:3rem;margin-bottom:16px;">🔒</div>
+          <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:8px;color:#1a1a2e;">Доступ заборонено</h2>
+          <p style="font-size:.84rem;color:rgba(26,26,46,.5);line-height:1.65;">Отримайте посилання від вчителя.<br>Ця сторінка не відкривається напряму.</p>
+        </div>
+      </div>`;
+    });
+    throw new Error('No session parameter');
+  }
+})();
+
+// ══ КРИПТО — AES-GCM 256 ══
+// Питання шифруються вчителем ключем, який передається ТІЛЬКИ в URL (не в Firebase).
+// Після завантаження ключ видаляється з URL і живе лише в пам'яті.
+async function _aesKey(raw){
+  const enc=new TextEncoder();
+  // Паддинг до 32 байт нульовими байтами (не рядком '0')
+  const rawBytes=enc.encode(raw);
+  const seed=new Uint8Array(32);
+  seed.set(rawBytes.slice(0,32));
+  return crypto.subtle.importKey('raw',seed,{name:'AES-GCM'},false,['encrypt','decrypt']);
+}
+async function encryptData(obj,keyRaw){
+  const key=await _aesKey(keyRaw);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj)));
+  return {iv:btoa(String.fromCharCode(...iv)),d:btoa(String.fromCharCode(...new Uint8Array(cipher)))};
+}
+async function decryptData(enc,keyRaw){
+  const key=await _aesKey(keyRaw);
+  const iv=Uint8Array.from(atob(enc.iv),c=>c.charCodeAt(0));
+  const d=Uint8Array.from(atob(enc.d),c=>c.charCodeAt(0));
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,d);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+let db=null, payload=null, sessionRef=null;
+let examQs=[], examAnswers=[], examViolations=[];
+let violCount=0, currentQ=0;
+let timerInt=null, perqInt=null, timeLeft=0, perqLeft=0;
+let examActive=false;
+let studentName='', studentClass='', participantId='';
+let multiSel=[];
+
+// ══ WeakMap — правильні відповіді НІКОЛИ не зберігаються у публічних змінних ══
+const _correct=new WeakMap();
+function _getCorrect(q){return _correct.get(q)||[0];}
+
+// ══ ЗАХИСТ: одноразовий токен результату ══
+// Кожна сесія учня отримує унікальний nonce — запобігає повторному відправленню
+let _resultSubmitted=false;
+const _sessionNonce=crypto.randomUUID();
+
+// ══ ЗАХИСТ: блокуємо DevTools через розрив часу ══
+// Коли DevTools відкриті — debugger зупиняє JS і час "зникає"
+let _lastTick=Date.now();
+setInterval(()=>{
+  if(!examActive)return; // тільки під час активного тесту
+  const now=Date.now();
+  const delta=now-_lastTick;
+  _lastTick=now;
+  if(delta>4000){ // 4с — безпечний поріг, менший дає хибні спрацювання
+    violation('DevTools','Виявлено паузу виконання — підозра на відладчик.');
+  }
+},1000);
+
+// ── FIREBASE ──
+function initFB(){
+  try{
+    if(typeof FIREBASE_CONFIG==='undefined'||FIREBASE_CONFIG.apiKey==='YOUR_API_KEY')return false;
+    if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+    db=firebase.database();
+    return true;
+  }catch(e){return false;}
+}
+
+// ── BOOT ──
+window.addEventListener('DOMContentLoaded',async()=>{
+  const fbOk=initFB();
+  loadExamTheme();
+  const params=new URLSearchParams(location.search);
+  const sid=params.get('session');
+  const encKey=params.get('k'); // ключ шифрування з URL
+
+  // Одразу прибираємо ключ з URL (щоб не лишився в history браузера)
+  if(encKey){
+    const cleanUrl=location.pathname+'?session='+sid;
+    history.replaceState({},'',cleanUrl);
+  }
+
+  if(sid&&fbOk){
+    try{
+      const snap=await db.ref('sessions/'+sid).once('value');
+      payload=snap.val();
+      if(!payload){showErr('Сесія не знайдена або вже закрита.');return;}
+      if(payload.status==='stopped'){showStopped();return;}
+      // Валідація структури payload
+      if(typeof payload!=='object'||typeof payload.sessionId!=='string'){showErr('Пошкоджені дані сесії.');return;}
+      if(!encKey&&!payload.encQ&&(!Array.isArray(payload.questions)||!payload.questions.length)){showErr('Тест не містить питань.');return;}
+
+      // Розшифровуємо питання якщо є ключ і шифрування
+      if(encKey&&payload.encQ){
+        try{
+          payload.questions=await decryptData(payload.encQ,encKey);
+        }catch(e){
+          showErr('Помилка розшифрування. Отримайте нове посилання від вчителя.');return;
+        }
+      }
+
+      sessionRef=db.ref('sessions/'+sid);
+      sessionRef.child('status').on('value',s=>{
+        if((s.val()==='stopped')&&examActive)showStopped();
+      });
+      showIntro();
+    }catch(e){showErr('Помилка: '+e.message);}
+  } else if(sid){
+    showErr('Firebase не налаштовано. Зверніться до вчителя.');
+  } else {
+    // Fallback localStorage (локальне тестування без Firebase)
+    try{
+      const raw=localStorage.getItem('sqpro_exam_payload');
+      if(!raw)throw new Error('Немає даних тесту');
+      payload=JSON.parse(raw);
+      if(!payload.questions?.length)throw new Error('Тест порожній');
+      showIntro();
+    }catch(e){showErr(e.message);}
+  }
+});
+
+function showErr(msg){
+  // Санітизуємо повідомлення перед вставкою в DOM
+  const safe=document.createElement('div');
+  safe.textContent=msg;
+  g('body').innerHTML=`<div style="text-align:center;padding:40px 20px;max-width:380px;">
+    <div style="font-size:2.5rem;margin-bottom:12px;">⚠️</div>
+    <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:8px;color:#1a1a2e;">Помилка</h2>
+    <p style="font-size:.82rem;color:rgba(26,26,46,.45);line-height:1.6;">${safe.innerHTML}</p>
+    <p style="font-size:.75rem;color:rgba(26,26,46,.3);margin-top:10px;">Зверніться до вчителя.</p>
+  </div>`;
+}
+
+function showStopped(){
+  examActive=false;clearInterval(timerInt);clearInterval(perqInt);
+  g('bar').style.display='none';g('progBar').style.display='none';
+  g('body').innerHTML=`<div class="stopped">
+    <div style="font-size:3rem;margin-bottom:14px;">⏹</div>
+    <h2>Тест зупинено</h2>
+    <p>Вчитель завершив цей тест.<br>Ваш результат збережено.</p>
+  </div>`;
+}
+
+// ── INTRO ──
+function showIntro(){
+  const p=payload;
+  const sec=p.secSettings||{};
+  const maxV=sec.maxviol||3;
+  const timeDesc=p.timerMode==='perq'?(p.timePerQ||30)+' сек на питання':(p.time||15)+' хвилин';
+  // Determine fixed class (set by teacher at launch)
+  const fixedClass=(p.launchClass||'').trim()||(p.cls||'').trim();
+  let rules='';
+  if(sec.tab)rules+='• Не переходьте на інші вкладки<br>';
+  if(sec.ctx)rules+='• Права кнопка миші заблокована<br>';
+  if(sec.copy)rules+='• Копіювання тексту заборонено<br>';
+  rules+='• Після '+maxV+' порушень тест зупиняється<br>';
+  rules+='• Після вибору відповіді — автоматичний перехід';
+
+  // Class display: show locked badge if teacher set a class
+  const classBlock=fixedClass
+    ? `<div style="display:flex;align-items:center;gap:8px;background:rgba(37,99,235,.07);border:1.5px solid rgba(37,99,235,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;">
+        <span style="font-size:.75rem;font-weight:700;color:rgba(37,99,235,.6);text-transform:uppercase;letter-spacing:.08em;">Клас</span>
+        <span style="font-size:1.05rem;font-weight:800;color:#1e3a5f;">${e(fixedClass)}</span>
+        <span style="margin-left:auto;font-size:.68rem;color:rgba(37,99,235,.5);font-weight:600;">🔒 зафіксовано</span>
+       </div>`
+    : '';
+
+  const t2=window._examTheme||{logo:'🧪',name:'SecureQuiz',isUrl:false};
+  const logoHtml=t2.isUrl
+    ?`<img src="${t2.logo}" style="width:52px;height:52px;object-fit:contain;border-radius:12px;">`
+    :t2.logo;
+
+  g('body').innerHTML=`
+    <div class="intro-wrap">
+      <div class="glass intro-card">
+        <div class="intro-emoji">${logoHtml}</div>
+        <div class="intro-title">${e(p.title||'Тест')}</div>
+        <div class="intro-meta">${p.questions.length} питань · ${timeDesc}${p.subject?' · '+e(p.subject):''}${fixedClass?' · '+e(fixedClass):''}</div>
+        <label class="fl">Введіть прізвище та ім'я</label>
+        <input type="text" id="nameInp" placeholder="Прізвище Ім'я" autocomplete="name" inputmode="text">
+        ${classBlock}
+        <div class="intro-rules">${rules}</div>
+        <button class="btn-start" onclick="startExam()">🚀 Розпочати тест</button>
+      </div>
+    </div>`;
+
+  g('nameInp').addEventListener('keydown',ev=>{if(ev.key==='Enter')startExam();});
+  g('nameInp').focus();
+}
+
+// ── START ──
+function startExam(){
+  const nameEl=g('nameInp');
+  const rawName=(nameEl?.value||'').trim();
+  // Ліміт 80 символів + дозволені символи (кирилиця, латиниця, пробіл, дефіс)
+  const name=rawName.slice(0,80).replace(/[<>"'`&]/g,'');
+  if(!name||name.length<2){if(nameEl){nameEl.style.borderColor='#ef4444';nameEl.focus();}return;}
+  studentName=name;
+  studentClass=((payload.launchClass||'').trim()||(payload.cls||'').trim());
+  participantId='p_'+crypto.randomUUID().replace(/-/g,'').slice(0,20);
+  showMoodCheck();
+}
+
+// ── MOOD CHECK ──
+const MOODS=[
+  {emoji:'😴',label:'Сонний',msg:'Нічого, кава вже в дорозі ☕ Ти впораєшся!',color:'#94a3b8'},
+  {emoji:'😟',label:'Тривожно',msg:'Зроби глибокий вдих 🌬️ Ти готувався — все буде добре!',color:'#f97316'},
+  {emoji:'😐',label:'Нейтрально',msg:'Нейтраль — це теж сила 💪 Вперед!',color:'#64748b'},
+  {emoji:'🙂',label:'Нормально',msg:'Відмінний настрій для тесту! 👍',color:'#22c55e'},
+  {emoji:'😄',label:'Чудово',msg:'Ось це заряд! 🔥 Зараз всіх здивуєш!',color:'#10b981'},
+  {emoji:'🤩',label:'Вогонь!',msg:'СУПЕР! Ти просто в ударі сьогодні 🚀⭐',color:'#f59e0b'},
+];
+let _selectedMood=null;
+
+function showMoodCheck(){
+  document.body.setAttribute('data-bg','4');
+  g('body').innerHTML=`
+    <div class="mood-wrap">
+      <div class="glass mood-card">
+        <div style="font-size:2.4rem;margin-bottom:10px;">🎭</div>
+        <div class="mood-title">Як твій настрій<br>перед тестом?</div>
+        <div class="mood-sub">Один клік — і вперед! Твоя відповідь<br>ніяк не впливає на оцінку 😉</div>
+        <div class="mood-emojis" id="moodBtns">
+          ${MOODS.map((m,i)=>`
+            <button class="mood-btn" onclick="selectMood(${i})" id="mb${i}" style="border-color:transparent;">
+              <span class="mood-emoji-icon">${m.emoji}</span>
+              <span class="mood-label">${m.label}</span>
+            </button>`).join('')}
+        </div>
+        <div class="mood-selected-msg" id="moodMsg" style="opacity:0;">‎</div>
+        <button class="btn-mood-next" id="moodNext" onclick="confirmMood()">Розпочати тест →</button>
+      </div>
+    </div>`;
+}
+
+function selectMood(i){
+  _selectedMood=i;
+  const m=MOODS[i];
+  document.querySelectorAll('.mood-btn').forEach((b,bi)=>{
+    b.classList.toggle('selected',bi===i);
+    b.style.borderColor=bi===i?m.color:'transparent';
+    b.style.background=bi===i?m.color+'18':'rgba(255,255,255,.7)';
+  });
+  const msg=g('moodMsg');
+  if(msg){msg.textContent=m.msg;msg.style.opacity='1';msg.style.color=m.color;}
+  const btn=g('moodNext');
+  if(btn)btn.classList.add('ready');
+}
+
+function confirmMood(){
+  if(_selectedMood===null)return;
+  const m=MOODS[_selectedMood];
+  // Save mood to Firebase (non-blocking)
+  if(typeof db!=='undefined'&&db&&typeof sessionRef!=='undefined'&&sessionRef){
+    sessionRef.child('participants/'+participantId+'/mood').set({emoji:m.emoji,label:m.label}).catch(()=>{});
+  }
+  _launchExam();
+}
+
+function _launchExam(){
+  // Будуємо масив питань БЕЗ correctIndices у публічному об'єкті
+  examQs=payload.questions.map(q=>{
+    const pub={
+      text:q.text,
+      options:[...(q.options||[])],
+      isMultiple:!!q.isMultiple,
+      points:q.points||1,
+      imageUrl:q.imageUrl||null,
+      optionImages:q.optionImages?[...q.optionImages]:null
+    };
+    // Правильні відповіді — тільки у WeakMap, не у pub
+    _correct.set(pub,[...(q.correctIndices||[0])]);
+    return pub;
+  });
+
+  if(payload.secSettings?.shuffle){
+    shuffleArr(examQs);
+    examQs.forEach(q=>{
+      const corr=_getCorrect(q);
+      const corrTxts=corr.map(i=>q.options[i]);
+      const pairs=q.options.map((o,i)=>({o,img:q.optionImages?q.optionImages[i]:null}));
+      shuffleArr(pairs);
+      q.options=pairs.map(p=>p.o);
+      q.optionImages=pairs.map(p=>p.img);
+      // Оновлюємо WeakMap після перемішування
+      _correct.set(q,corrTxts.map(t=>q.options.indexOf(t)).filter(i=>i>=0));
+    });
+  }
+
+  examAnswers=examQs.map(()=>[]);
+  examViolations=[];violCount=0;currentQ=0;multiSel=[];
+  examActive=true;
+
+  g('bar').style.display='flex';
+  g('progBar').style.display='block';
+
+  buildDots();
+  if(payload.secSettings?.wm)buildWM();
+  attachSecurity();
+
+  if(payload.timerMode==='perq'){
+    perqLeft=payload.timePerQ||30;
+    startPerQTimer();
+  } else {
+    timeLeft=(payload.time||15)*60;
+    startTotalTimer();
+  }
+
+  renderQ();
+  sendProgress({name:studentName,cls:studentClass,current:1,total:examQs.length,status:'active',pct:null});
+}
+
+// ── RENDER QUESTION ──
+function renderQ(){
+  multiSel=[];
+  const q=examQs[currentQ];
+  const multi=!!q.isMultiple;
+  document.body.setAttribute('data-bg',currentQ%10);
+  g('prog').style.width=(currentQ/examQs.length*100)+'%';
+  g('barCounter').textContent=(currentQ+1)+' / '+examQs.length;
+
+  let optsHtml=q.options.map((o,oi)=>{
+    const img=q.optionImages?.[oi];
+    const cb=multi?`<span class="opt-cb" id="cb${oi}"></span>`:'';
+    return`<div class="opt" id="opt${oi}">
+      ${cb}${img?`<img src="${e(img)}" class="opt-img" onerror="this.style.display='none'">`:''}<div class="opt-txt">${e(o)||'...'}</div>
+    </div>`;
+  }).join('');
+
+  g('body').innerHTML=`
+    <div class="q-wrap">
+      <div class="glass q-card">
+        ${payload.timerMode==='perq'?`<div class="perq-timer" id="perqTimer">${perqLeft}с</div>`:''}
+        ${q.imageUrl?`<img src="${e(q.imageUrl)}" class="q-img" onerror="this.style.display='none'">`:''} 
+        <div class="q-text">${e(q.text)||'(без тексту)'}</div>
+        ${multi?`<div class="multi-hint">Оберіть всі правильні варіанти і натисніть «Підтвердити»</div>`:''}
+        <div id="optsWrap">${optsHtml}</div>
+        ${multi?`<button class="confirm-btn" id="confirmBtn" onclick="confirmMulti()">✓ Підтвердити відповідь</button>`:''}
+      </div>
+    </div>`;
+
+  // Attach opt events AFTER innerHTML set
+  q.options.forEach((_,oi)=>{
+    const el=g('opt'+oi);
+    if(!el)return;
+    if(multi){
+      el.addEventListener('pointerdown',ev=>{ev.preventDefault();doToggle(oi);},{passive:false});
+    } else {
+      el.addEventListener('pointerdown',ev=>{ev.preventDefault();doPick(oi);},{passive:false});
+    }
+  });
+
+  if(payload.timerMode==='perq'){
+    clearInterval(perqInt);
+    perqLeft=payload.timePerQ||30;
+    updatePerqDisplay();
+    perqInt=setInterval(()=>{
+      if(!examActive)return;
+      perqLeft--;
+      updatePerqDisplay();
+      if(perqLeft<=0){clearInterval(perqInt);advance();}
+    },1000);
+  }
+}
+
+function updatePerqDisplay(){
+  const el=g('perqTimer');
+  if(!el)return;
+  el.textContent=perqLeft+'с';
+  el.className='perq-timer'+(perqLeft<=5?' crit':perqLeft<=10?' warn':'');
+  // Also update bar timer for per-question mode
+  const bt=g('barTimer');
+  if(bt){
+    bt.textContent=String(Math.floor(perqLeft/60)).padStart(2,'0')+':'+String(perqLeft%60).padStart(2,'0');
+    bt.className='bar-timer'+(perqLeft<=5?' crit':perqLeft<=10?' warn':'');
+  }
+}
+
+// ── ANSWER LOGIC ──
+function doPick(oi){
+  if(!examActive)return;
+  examAnswers[currentQ]=[oi];
+  // Disable all
+  document.querySelectorAll('.opt').forEach(el=>el.classList.add('disabled'));
+  const sel=g('opt'+oi);
+  if(sel)sel.classList.add('selected');
+  clearInterval(perqInt);
+  setTimeout(advance,420);
+}
+
+function doToggle(oi){
+  if(!examActive)return;
+  const optEl=g('opt'+oi);
+  const cbEl=g('cb'+oi);
+  const idx=multiSel.indexOf(oi);
+  if(idx>=0){
+    multiSel.splice(idx,1);
+    if(optEl)optEl.classList.remove('selected-multi');
+    if(cbEl)cbEl.classList.remove('checked');
+  } else {
+    multiSel.push(oi);
+    if(optEl)optEl.classList.add('selected-multi');
+    if(cbEl)cbEl.classList.add('checked');
+  }
+}
+
+function confirmMulti(){
+  if(!examActive)return;
+  examAnswers[currentQ]=[...multiSel];
+  document.querySelectorAll('.opt').forEach(el=>el.classList.add('disabled'));
+  const btn=g('confirmBtn');if(btn)btn.disabled=true;
+  clearInterval(perqInt);
+  setTimeout(advance,420);
+}
+
+function advance(){
+  if(currentQ<examQs.length-1){
+    currentQ++;
+    sendProgress({current:currentQ+1,total:examQs.length});
+    renderQ();
+  } else {
+    finishExam('submit');
+  }
+}
+
+// ── TIMERS ──
+function startTotalTimer(){
+  updateTimerUI(timeLeft);
+  timerInt=setInterval(()=>{
+    if(!examActive)return;
+    timeLeft--;
+    updateTimerUI(timeLeft);
+    if(timeLeft<=0)finishExam('time');
+  },1000);
+}
+function updateTimerUI(t){
+  const el=g('barTimer');
+  if(!el)return;
+  el.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
+  el.className='bar-timer'+(t<60?' crit':t<120?' warn':'');
+}
+
+// ── SECURITY ──
+let _screenW=window.screen.width, _screenH=window.screen.height;
+let _splitCheckInt=null;
+
+function attachSecurity(){
+  const sec=payload.secSettings||{};
+  if(sec.tab){
+    document.addEventListener('visibilitychange',onVis);
+    window.addEventListener('blur',onBlur);
+    // Split-screen / floating window / overlay detection
+    _splitCheckInt=setInterval(checkSplitScreen,800);
+    // Page visibility via VisualViewport (covers overlay attacks)
+    if(window.visualViewport){
+      window.visualViewport.addEventListener('resize',checkSplitScreen);
+    }
+  }
+  if(sec.ctx)document.addEventListener('contextmenu',onCtx);
+  if(sec.copy){document.addEventListener('copy',onCopy);document.addEventListener('cut',onCopy);}
+  if(sec.prtsc){
+    document.addEventListener('keydown',onKey);
+    window.addEventListener('keyup',ev=>{
+      if(ev.key==='PrintScreen'||ev.keyCode===44){flashWhite();violation('Print Screen','Спроба зробити знімок екрана.');}
+    });
+  }
+}
+
+function checkSplitScreen(){
+  if(!examActive)return;
+  const ww=window.innerWidth, wh=window.innerHeight;
+  const sw=window.screen.width, sh=window.screen.height;
+  // Detect split: window is significantly smaller than screen
+  const wRatio=ww/sw, hRatio=wh/sh;
+  // Allow for browser chrome (address bar etc) — threshold 0.55
+  if(wRatio<0.55||hRatio<0.55){
+    violation('Розділений екран','Виявлено розділений екран або плаваюче вікно.');
+  }
+  // Detect overlay: document not fully visible
+  if(document.hidden){return;} // handled by visibilitychange
+  // VisualViewport check for floating/picture-in-picture overlays
+  if(window.visualViewport){
+    const vv=window.visualViewport;
+    const vRatio=(vv.width*vv.scale)/sw;
+    if(vRatio<0.5){
+      violation('Плаваюче вікно','Виявлено плаваюче або накладне вікно.');
+    }
+  }
+}
+function detachSecurity(){
+  clearInterval(_splitCheckInt);_splitCheckInt=null;
+  if(window.visualViewport)window.visualViewport.removeEventListener('resize',checkSplitScreen);
+  document.removeEventListener('visibilitychange',onVis);
+  window.removeEventListener('blur',onBlur);
+  document.removeEventListener('contextmenu',onCtx);
+  document.removeEventListener('copy',onCopy);
+  document.removeEventListener('cut',onCopy);
+  document.removeEventListener('keydown',onKey);
+  g('wmLayer').innerHTML='';
+}
+function onVis(){if(!examActive||!document.hidden)return;violation('Перехід на іншу вкладку','Ви залишили вікно тесту.');if(payload.secSettings?.blur)blurBody(true);}
+function onBlur(){if(!examActive||document.hidden)return;violation('Втрата фокусу','Перехід до іншого вікна.');if(payload.secSettings?.blur)blurBody(true);}
+function onCtx(ev){ev.preventDefault();if(!examActive)return;violation('Контекстне меню','Спроба відкрити контекстне меню.');}
+function onCopy(ev){ev.preventDefault();if(!examActive)return;violation('Копіювання','Спроба скопіювати текст тесту.');}
+function onKey(ev){
+  if(!examActive)return;
+  if(ev.key==='PrintScreen'||ev.keyCode===44){ev.preventDefault();flashWhite();violation('Print Screen','Спроба зробити знімок.');return;}
+  if(ev.key==='F12'||(ev.ctrlKey&&ev.shiftKey&&'IJCK'.includes(ev.key.toUpperCase()))||(ev.ctrlKey&&ev.key==='u')){ev.preventDefault();violation('DevTools','Спроба відкрити інструменти розробника.');}
+}
+function blurBody(on){g('body').style.filter=on?'blur(14px)':'';}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&examActive)blurBody(false);});
+function flashWhite(){
+  const f=document.createElement('div');
+  f.style.cssText='position:fixed;inset:0;background:#fff;z-index:99999;pointer-events:none;';
+  document.body.appendChild(f);setTimeout(()=>f.remove(),350);
+}
+
+function buildDots(){
+  const max=payload.secSettings?.maxviol||3;
+  ['barDots','secVdots'].forEach(id=>{
+    const c=g(id);if(!c)return;c.innerHTML='';
+    for(let i=0;i<max;i++){const d=document.createElement('div');d.className='vd';d.id=id+'_'+i;c.appendChild(d);}
+  });
+}
+let _lastViolTime=0;
+function violation(title,desc){
+  if(!examActive)return;
+  // Дедублікація: ігнорувати повторне порушення того ж типу протягом 1.5с
+  const now=Date.now();
+  if(now-_lastViolTime<1500)return;
+  _lastViolTime=now;
+  violCount++;
+  examViolations.push({title,desc,time:new Date().toLocaleTimeString('uk-UA'),q:currentQ+1});
+  ['barDots','secVdots'].forEach(id=>{const d=g(id+'_'+(violCount-1));if(d)d.classList.add('hit');});
+  g('secTitle').textContent=title;
+  g('secDesc').textContent=desc+'\n\nПорушення '+violCount+' з '+(payload.secSettings?.maxviol||3)+'.';
+  g('secOverlay').classList.add('show');
+  if(violCount>=(payload.secSettings?.maxviol||3)){
+    setTimeout(()=>{dismissSec();finishExam('violations');},1500);
+  }
+}
+function dismissSec(){g('secOverlay').classList.remove('show');blurBody(false);}
+
+function buildWM(){
+  const wl=g('wmLayer');wl.innerHTML='';
+  const t=studentName+(studentClass?' · '+studentClass:'')+' · SecureQuiz';
+  for(let r=-2;r<20;r++)for(let c=-1;c<8;c++){
+    const el=document.createElement('div');el.className='wm';el.textContent=t;
+    el.style.top=(r*130)+'px';el.style.left=(c*320)+'px';wl.appendChild(el);
+  }
+}
+
+// ── FIREBASE ──
+let _lastProgressSend=0;
+function sendProgress(data){
+  if(!db||!sessionRef)return;
+  const now=Date.now();
+  // Rate-limit: не надсилати частіше ніж раз на 2 секунди
+  if(now-_lastProgressSend<2000)return;
+  _lastProgressSend=now;
+  sessionRef.child('participants/'+participantId).update(data).catch(()=>{});
+}
+
+// ── FINISH ──
+function finishExam(reason){
+  // ══ Захист від повторного виклику ══
+  if(_resultSubmitted){return;}
+  _resultSubmitted=true;
+
+  examActive=false;
+  clearInterval(timerInt);clearInterval(perqInt);
+  detachSecurity();
+  g('bar').style.display='none';g('progBar').style.display='none';
+  document.body.setAttribute('data-bg','0');
+
+  // Scoring
+  let earned=0,totalPts=0;
+  examQs.forEach((q,i)=>{
+    const pts=q.points||1; totalPts+=pts;
+    const ans=examAnswers[i]||[];
+    const corr=_getCorrect(q);
+    const ok=q.isMultiple
+      ?(ans.length===corr.length&&corr.every(c=>ans.includes(c)))
+      :(ans[0]===corr[0]);
+    if(ok)earned+=pts;
+  });
+  const pct=totalPts>0?Math.round(earned/totalPts*100):0;
+  const correctCnt=examQs.filter((q,i)=>{
+    const ans=examAnswers[i]||[],corr=_getCorrect(q);
+    return q.isMultiple?(ans.length===corr.length&&corr.every(c=>ans.includes(c))):(ans[0]===corr[0]);
+  }).length;
+
+  // Grade
+  const grades=payload.grades||[];
+  let grade={l:'1',c:'#7f1d1d',motto:''};
+  for(const g2 of grades){if(pct>=g2.m){grade=g2;break;}}
+
+  // Motto from grade or fallback
+  const motto=grade.motto||(pct>=75?'Ти топ! Так тримати 🔥':pct>=50?'Ще трохи — і будеш у топі 🚀':pct>=25?'Набираєш обертів! Не зупиняйся 💪':'Старт є — далі тільки вгору 📈');
+  const subT=reason==='time'?'⏰ Час вийшов':reason==='violations'?'⛔ Зупинено за порушення':'✅ Тест завершено';
+
+  // Viol log
+  let violHtml='';
+  if(examViolations.length){
+    violHtml=`<div class="viol-log"><div class="viol-log-title">🚨 Порушення (${examViolations.length})</div>
+      ${examViolations.map(v=>`<div class="viol-item">[${v.time}] Q${v.q}: <strong style="color:#ef4444">${v.title}</strong></div>`).join('')}
+    </div>`;
+  }
+
+  // ══ Fingerprint пристрою — допомагає виявити одну людину з кількох акаунтів ══
+  const _fp={
+    ua:navigator.userAgent.slice(0,80),
+    lang:navigator.language,
+    tz:Intl.DateTimeFormat().resolvedOptions().timeZone,
+    w:screen.width,h:screen.height,
+    cores:navigator.hardwareConcurrency||0,
+    nonce:_sessionNonce
+  };
+
+  // Save result
+  const result={
+    sessionId:payload.sessionId,student:studentName,
+    cls:studentClass,
+    launchClass:studentClass||'',
+    test:payload.title||'Тест',subject:payload.subject||'',
+    date:new Date().toLocaleDateString('uk-UA'),
+    startedAt:payload.startedAt,ts:Date.now(),
+    earned:+earned.toFixed(1),total:totalPts,pct,
+    grade:grade.l,gradeColor:grade.c,violations:violCount,reason,
+    _fp,
+    answersSnapshot:examQs.map((q,i)=>({
+      text:q.text,options:q.options,
+      correctIndices:_getCorrect(q),
+      isMultiple:!!q.isMultiple,
+      given:examAnswers[i]||[]
+    }))
+  };
+  // localStorage fallback — зберігаємо БЕЗ правильних відповідей
+  try{
+    const safeResult={...result};
+    // Видаляємо правильні відповіді з локального збереження
+    if(safeResult.answersSnapshot){
+      safeResult.answersSnapshot=safeResult.answersSnapshot.map(a=>({
+        text:a.text,given:a.given,isMultiple:a.isMultiple
+        // correctIndices НЕ зберігаємо локально
+      }));
+    }
+    const rs=JSON.parse(localStorage.getItem('sqpro_results')||'[]');
+    rs.unshift(safeResult);
+    localStorage.setItem('sqpro_results',JSON.stringify(rs.slice(0,500)));
+  }catch(e){}
+
+  // Підписуємо результат HMAC-SHA256 щоб вчитель міг перевірити цілісність
+  // Підпис = hash(sessionId + studentName + pct + ts) — видно в результатах як поле _sig
+  (async()=>{
+    try{
+      const msg=new TextEncoder().encode([result.sessionId,result.student,result.pct,result.ts,_sessionNonce].join('|'));
+      // Використовуємо весь sessionId (48 hex символів) + nonce як ключовий матеріал
+      const keyMaterial=new TextEncoder().encode((result.sessionId+_sessionNonce).slice(0,32).padEnd(32,'x'));
+      const key=await crypto.subtle.importKey('raw',keyMaterial,{name:'HMAC',hash:'SHA-256'},false,['sign']);
+      const sig=await crypto.subtle.sign('HMAC',key,msg);
+      result._sig=Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32);
+    }catch(e){}
+    // Firebase — зберігаємо після підпису
+    if(db){
+      const key=participantId+'_r';
+      db.ref('results/'+key).set(result).catch(()=>{});
+      sendProgress({name:studentName,cls:studentClass,status:'done',pct,grade:grade.l,violations:violCount,current:examQs.length,total:examQs.length});
+    }
+  })();
+
+  // Arc circumference
+  const R=54, C=2*Math.PI*R;
+  const arc=Math.round(C*pct/100), gap=Math.round(C*(1-pct/100));
+
+  // Grade emoji
+  const gradeEmoji=pct>=75?'🏆':pct>=50?'⭐':pct>=25?'💪':'📈';
+
+  g('body').innerHTML=`
+    <div class="result-wrap">
+      <div class="result-card-new">
+
+        <!-- Motivational motto — prominent at top -->
+        <div class="rc-motto-big">${gradeEmoji} ${motto}</div>
+
+        <!-- GRADE — the hero element, huge number -->
+        <div class="rc-grade-hero" style="background:linear-gradient(160deg,${grade.c}18 0%,${grade.c}06 100%);border:2.5px solid ${grade.c}35;">
+          <div class="rc-grade-label" style="color:${grade.c}88;">ОЦІНКА</div>
+          <div class="rc-grade-giant" style="color:${grade.c};">${grade.l}</div>
+          <div class="rc-pct" style="color:${grade.c}bb;">${pct}%  &nbsp;·&nbsp;  ${earned.toFixed(1)} / ${totalPts} б.</div>
+        </div>
+
+        <!-- Status line -->
+        <div style="font-size:.78rem;color:rgba(26,26,46,.45);text-align:center;margin-bottom:10px;">${subT}</div>
+
+        <!-- Stats -->
+        <div class="rc-stats">
+          <div class="rc-stat"><div class="rc-stat-val" style="color:#16a34a">${correctCnt}</div><div class="rc-stat-lbl">✓ правильно</div></div>
+          <div class="rc-stat-div"></div>
+          <div class="rc-stat"><div class="rc-stat-val" style="color:#c84b31">${examQs.length-correctCnt}</div><div class="rc-stat-lbl">✗ неправильно</div></div>
+          <div class="rc-stat-div"></div>
+          <div class="rc-stat"><div class="rc-stat-val" style="color:#f59e0b">${violCount}</div><div class="rc-stat-lbl">⚠ порушень</div></div>
+        </div>
+
+        ${violHtml}
+
+        <div class="rc-saved">✓ Результат збережено в журналі вчителя</div>
+        <button class="btn-close" onclick="closeWin()">✕ Закрити вікно</button>
+      </div>
+    </div>`;
+}
+
+function closeWin(){
+  window.close();
+  setTimeout(()=>{
+    g('body').innerHTML=`<div style="text-align:center;padding:40px 20px;"><div style="font-size:2rem;margin-bottom:12px;">✅</div><p style="font-size:.9rem;color:rgba(26,26,46,.45);">Тест завершено. Закрийте цю вкладку.</p></div>`;
+  },300);
+}
+
+// ── UTILS ──
+function g(id){return document.getElementById(id);}
+function e(s){if(!s)return'';const d=document.createElement('div');d.appendChild(document.createTextNode(String(s)));return d.innerHTML;}
+function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// ══ Глобальний блок DevTools (діє з моменту завантаження) ══
+document.addEventListener('keydown',ev=>{
+  const ck=ev.ctrlKey||ev.metaKey;
+  if(ev.key==='F12'||(ck&&ev.shiftKey&&'IJCK'.includes(ev.key.toUpperCase()))||(ck&&ev.key.toLowerCase()==='u')||(ck&&ev.key.toLowerCase()==='s')){
+    ev.preventDefault();ev.stopPropagation();
+    if(examActive)violation('DevTools','Спроба відкрити інструменти розробника.');
+  }
+},true);
+</script>
+</body>
+</html>

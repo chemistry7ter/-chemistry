@@ -1,0 +1,2875 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecureQuiz — Панель вчителя</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* ══ THEME VARS (overridden by settings) ══ */
+:root{
+  --primary:#1a1a2e;--primary2:#2d2d4e;
+  --accent:#c84b31;--green:#16a34a;--blue:#2563eb;
+  --paper:#f5f0e8;--paper2:#ede8dc;--paper3:#e4ddd0;
+  --border:rgba(26,26,46,.12);
+  --shadow:0 2px 16px rgba(26,26,46,.08);
+  --shadow-lg:0 8px 40px rgba(26,26,46,.15);
+  --r:14px;--tr:.2s ease;--sb:230px;
+  --logo-text:"SecureQuiz";
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--paper);color:var(--primary);min-height:100vh;}
+
+/* ── LOGIN ── */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--paper);}
+.login-card{background:#fff;border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:var(--shadow-lg);text-align:center;}
+.login-logo{font-size:2.5rem;margin-bottom:12px;}
+.login-card h1{font-size:1.7rem;font-weight:800;margin-bottom:4px;color:var(--primary);}
+.login-card p{font-size:.83rem;color:rgba(26,26,46,.45);margin-bottom:28px;}
+.login-err{background:rgba(200,75,49,.1);color:var(--accent);border-radius:8px;padding:10px;font-size:.82rem;margin-bottom:12px;display:none;}
+.login-err.show{display:block;}
+.fg{margin-bottom:12px;text-align:left;}
+.fl{display:block;font-size:.67rem;font-weight:700;color:rgba(26,26,46,.42);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;}
+input[type=text],input[type=password],input[type=number],input[type=url],input[type=color],textarea,select{width:100%;background:var(--paper);border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-family:inherit;font-size:.86rem;color:var(--primary);outline:none;transition:var(--tr);}
+input:focus,textarea:focus,select:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 3px rgba(26,26,46,.07);}
+textarea{resize:vertical;min-height:68px;}
+input[type=checkbox]{width:auto;}
+input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-radius:8px;}
+
+/* ── LAYOUT ── */
+.app{display:none;}
+.app.show{display:flex;min-height:100vh;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sb);background:var(--primary);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:300;overflow-y:auto;transition:transform .26s ease,width .26s ease;}
+.sidebar.collapsed{width:56px;}
+.sidebar.collapsed .nav-label,.sidebar.collapsed .sb-sec,.sidebar.collapsed .sb-logo-text,.sidebar.collapsed .sb-user{display:none;}
+.sidebar.collapsed .nav-item{justify-content:center;padding:10px;}
+.sb-logo{padding:18px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;position:relative;}
+.sb-logo-icon{font-size:1.4rem;flex-shrink:0;}
+.sb-logo-text h1{font-size:1.1rem;font-weight:800;line-height:1.2;}
+.sb-logo-text span{font-size:.58rem;color:rgba(255,255,255,.3);letter-spacing:.1em;text-transform:uppercase;display:block;margin-top:1px;}
+.sb-collapse-btn{position:fixed;left:calc(var(--sb) - 12px);top:20px;width:24px;height:24px;background:var(--primary);border:2px solid rgba(255,255,255,.2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:rgba(255,255,255,.7);z-index:301;transition:left .26s ease;}
+.sidebar.collapsed~.sb-collapse-btn,.sidebar.collapsed+*+.sb-collapse-btn{left:44px;}
+.sb-sec{font-size:.57rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.25);padding:14px 16px 4px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;font-size:.84rem;font-weight:500;color:rgba(255,255,255,.52);border-left:3px solid transparent;transition:var(--tr);white-space:nowrap;}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,.07);}
+.nav-item.active{color:#fff;background:rgba(255,255,255,.1);border-left-color:var(--accent);}
+.nav-icon{font-size:.95rem;width:18px;text-align:center;flex-shrink:0;}
+.sb-foot{margin-top:auto;padding:12px 16px;border-top:1px solid rgba(255,255,255,.07);}
+.sb-user{font-size:.78rem;color:rgba(255,255,255,.55);margin-bottom:6px;}
+.sb-logout{font-size:.73rem;color:rgba(255,255,255,.3);cursor:pointer;}
+.sb-logout:hover{color:rgba(255,255,255,.7);}
+
+/* ── MAIN ── */
+.main{flex:1;margin-left:var(--sb);min-height:100vh;transition:margin-left .26s ease;}
+.main.wide{margin-left:56px;}
+.topbar{background:var(--paper);border-bottom:1px solid var(--border);padding:11px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;gap:12px;}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:5px;border-radius:8px;border:none;background:transparent;}
+.hamburger span{display:block;width:20px;height:2px;background:var(--primary);border-radius:2px;transition:var(--tr);}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.hamburger.open span:nth-child(2){opacity:0;}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+.topbar-title{font-size:1.15rem;font-weight:800;color:var(--primary);}
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:299;}
+.mob-overlay.show{display:block;}
+
+/* ── PAGES ── */
+.page{display:none;padding:22px;animation:fadeUp .2s ease;}
+.page.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── CARDS ── */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;margin-bottom:14px;}
+.card-title{font-size:.95rem;font-weight:800;margin-bottom:12px;color:var(--primary);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+
+/* ── STAT ── */
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow);}
+.stat-val{font-size:1.9rem;font-weight:800;line-height:1;margin-bottom:3px;}
+.stat-lbl{font-size:.64rem;color:rgba(26,26,46,.4);font-weight:700;text-transform:uppercase;letter-spacing:.06em;}
+
+/* ── BTN ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:9px;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;border:none;transition:var(--tr);}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary2);transform:translateY(-1px);}
+.btn-red{background:var(--accent);color:#fff;}
+.btn-red:hover{filter:brightness(1.1);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{filter:brightness(1.1);}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-blue:hover{filter:brightness(1.1);}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--primary);}
+.btn-outline:hover{background:var(--paper2);}
+.btn-sm{padding:5px 11px;font-size:.74rem;border-radius:8px;}
+.btn-danger{background:rgba(200,75,49,.08);color:var(--accent);border:1px solid rgba(200,75,49,.18);}
+.btn-danger:hover{background:rgba(200,75,49,.18);}
+.btn-full{width:100%;justify-content:center;}
+
+/* ── IMPORT TABS ── */
+.tab-bar{display:flex;gap:3px;background:var(--paper2);padding:3px;border-radius:9px;margin-bottom:14px;}
+.tab-btn{flex:1;padding:6px;border-radius:7px;border:none;background:transparent;font-family:inherit;font-size:.76rem;font-weight:600;cursor:pointer;color:rgba(26,26,46,.5);transition:var(--tr);}
+.tab-btn.active{background:#fff;color:var(--primary);box-shadow:var(--shadow);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* ── QUESTION CARD ── */
+.q-card{background:var(--paper);border:1.5px solid var(--border);border-radius:11px;padding:13px 14px;margin-bottom:9px;}
+.q-card:hover{border-color:rgba(26,26,46,.22);}
+.q-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:5px;}
+.q-num{font-size:.65rem;font-weight:700;font-family:monospace;color:var(--accent);background:rgba(200,75,49,.1);padding:2px 8px;border-radius:100px;}
+.opt-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+.opt-row input[type=text]{flex:1;}
+.cbtn{width:28px;height:28px;border-radius:7px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;color:rgba(26,26,46,.3);transition:var(--tr);flex-shrink:0;}
+.cbtn.on{background:var(--green);border-color:var(--green);color:#fff;}
+.cbtn.on-multi{background:var(--blue);border-color:var(--blue);color:#fff;}
+.cbtn:hover:not(.on):not(.on-multi){border-color:var(--green);color:var(--green);}
+.qpts{width:54px!important;text-align:center;font-family:monospace;font-size:.8rem;}
+.q-img-prev{max-width:100%;max-height:90px;object-fit:contain;border-radius:7px;margin-bottom:7px;border:1px solid var(--border);display:block;}
+
+/* ── LIBRARY ── */
+.lib-cat-title{font-size:.88rem;font-weight:800;color:var(--primary2);margin-bottom:7px;padding:5px 12px;background:var(--paper2);border-radius:7px;display:flex;align-items:center;gap:7px;}
+.lib-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:11px;transition:var(--tr);}
+.lib-card:hover{box-shadow:var(--shadow);}
+.lib-icon{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;font-weight:800;color:#fff;}
+.lib-info{flex:1;min-width:0;}
+.lib-title{font-weight:700;font-size:.86rem;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lib-meta{font-size:.68rem;color:rgba(26,26,46,.42);}
+.lib-tags{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;}
+.lib-tag{font-size:.6rem;font-weight:700;padding:1px 6px;border-radius:4px;}
+.lib-tag-sub{background:rgba(37,99,235,.1);color:var(--blue);}
+.lib-tag-cls{color:#fff;border-radius:5px;padding:1px 7px;}
+.lib-actions{display:flex;gap:4px;flex-shrink:0;}
+
+/* ── ACTIVE SESSIONS ── */
+.session-live{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;}
+.session-live-header{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;}
+.session-live-header:hover{background:var(--paper);}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--green);animation:livepulse 1.5s infinite;flex-shrink:0;}
+@keyframes livepulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.live-info{flex:1;min-width:0;}
+.live-title{font-weight:700;font-size:.88rem;margin-bottom:2px;}
+.live-meta{font-size:.7rem;color:rgba(26,26,46,.42);}
+.live-stats{display:flex;gap:10px;align-items:center;}
+.live-stat{text-align:center;}
+.live-stat-val{font-size:1.1rem;font-weight:800;}
+.live-stat-lbl{font-size:.6rem;color:rgba(26,26,46,.42);text-transform:uppercase;letter-spacing:.05em;}
+.live-detail{display:none;border-top:1px solid var(--border);padding:14px 16px;}
+.live-detail.open{display:block;}
+.progress-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:12px;}
+.student-progress{background:var(--paper);border-radius:9px;padding:10px 12px;font-size:.8rem;}
+.sp-name{font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sp-bar-wrap{height:5px;background:var(--border);border-radius:100px;margin-bottom:3px;overflow:hidden;}
+.sp-bar{height:100%;background:var(--green);border-radius:100px;transition:width .4s;}
+.sp-status{font-size:.66rem;color:rgba(26,26,46,.45);}
+
+/* ── RESULTS ── */
+.res-session{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;}
+.res-session.session-journaled{border-color:rgba(22,163,74,.4);background:rgba(22,163,74,.03);}
+.res-session.session-journaled .res-session-hdr::after{content:'✓ У журналі';font-size:.62rem;font-weight:700;color:var(--green);background:rgba(22,163,74,.12);padding:2px 7px;border-radius:4px;margin-left:4px;}
+.res-session-hdr{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;transition:var(--tr);}
+.res-session-hdr:hover{background:var(--paper);}
+.res-icon{width:56px;height:56px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.18);text-align:center;}
+.res-info{flex:1;min-width:0;}
+.res-title{font-weight:700;font-size:.88rem;margin-bottom:2px;}
+.res-meta{font-size:.68rem;color:rgba(26,26,46,.42);}
+.res-badge{font-size:1.1rem;font-weight:800;padding:5px 13px;border-radius:8px;color:#fff;flex-shrink:0;}
+.res-detail{display:none;border-top:1px solid var(--border);}
+.res-detail.open{display:block;}
+.rtbl{width:100%;border-collapse:collapse;font-size:.79rem;}
+.rtbl th{text-align:left;padding:7px 13px;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(26,26,46,.38);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+.rtbl th:hover{color:var(--primary);}
+.rtbl th.asc::after{content:' ↑';}
+.rtbl th.desc::after{content:' ↓';}
+.rtbl td{padding:9px 13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.rtbl tr:last-child td{border-bottom:none;}
+.rtbl tr:hover td{background:var(--paper);}
+.gspan{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:30px;padding:0 9px;border-radius:7px;font-weight:800;font-size:.92rem;color:#fff;}
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:.65rem;font-weight:700;}
+.tag-g{background:rgba(22,163,74,.12);color:var(--green);}
+.tag-r{background:rgba(200,75,49,.12);color:var(--accent);}
+
+/* ── TOGGLE ── */
+.tog-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.tog-row:last-child{border-bottom:none;}
+.tog{position:relative;width:37px;height:20px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tog-tr{position:absolute;inset:0;background:var(--paper3);border-radius:100px;cursor:pointer;transition:.2s;}
+.tog-tr::before{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:3px;left:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.12);}
+.tog input:checked+.tog-tr{background:var(--primary);}
+.tog input:checked+.tog-tr::before{transform:translateX(17px);}
+.tl{font-size:.83rem;font-weight:600;margin-bottom:1px;}
+.td2{font-size:.71rem;color:rgba(26,26,46,.45);line-height:1.5;}
+
+/* ── GRADE ── */
+.grade-row{display:grid;grid-template-columns:46px 1fr 64px 32px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);}
+.grade-row:last-child{border-bottom:none;}
+.gchip{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:9px;font-weight:800;font-size:1.05rem;color:#fff;}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9800;align-items:center;justify-content:center;padding:16px;}
+.modal-bg.show{display:flex;}
+.modal{background:#fff;border-radius:18px;padding:24px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);}
+.modal h3{font-size:1.1rem;font-weight:800;margin-bottom:12px;}
+.qr-wrap{display:flex;justify-content:center;padding:16px;background:var(--paper);border-radius:12px;margin-bottom:14px;}
+.ans-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:.8rem;}
+.ans-item:last-child{border-bottom:none;}
+.ans-q{font-weight:600;margin-bottom:3px;}
+.ans-ok{color:var(--green);font-size:.76rem;}
+.ans-no{color:var(--accent);font-size:.76rem;}
+
+/* ── MISC ── */
+.divider{height:1px;background:var(--border);margin:12px 0;}
+.text-sm{font-size:.76rem;color:rgba(26,26,46,.45);}
+.text-mono{font-family:monospace;}
+.empty-state{text-align:center;padding:32px 16px;color:rgba(26,26,46,.28);}
+.empty-state .esi{font-size:1.9rem;margin-bottom:8px;}
+.empty-state p{font-size:.8rem;line-height:1.6;}
+.flex-btw{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.firebase-notice{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:10px;padding:12px 14px;font-size:.78rem;color:#92400e;margin-bottom:16px;}
+/* ── PREVIEW ── */
+.pv-q{font-size:1rem;font-weight:800;line-height:1.5;color:#1e3a5f;background:rgba(37,99,235,.05);border-radius:10px;padding:13px 15px;border-left:4px solid #3b82f6;margin-bottom:14px;}
+.pv-img{width:100%;max-height:180px;object-fit:contain;border-radius:9px;margin-bottom:12px;display:block;border:1px solid var(--border);}
+.pv-multi{font-size:.72rem;color:var(--blue);font-weight:600;margin-bottom:10px;font-style:italic;}
+.pv-opt{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:11px;margin-bottom:7px;border:2px solid transparent;font-size:.88rem;font-weight:500;}
+.pv-opt:nth-child(1){background:#fef3c7;}
+.pv-opt:nth-child(2){background:#dbeafe;}
+.pv-opt:nth-child(3){background:#dcfce7;}
+.pv-opt:nth-child(4){background:#fce7f3;}
+.pv-opt:nth-child(5){background:#ede9fe;}
+.pv-opt:nth-child(6){background:#ffedd5;}
+.pv-opt.correct{border-color:#16a34a!important;background:#dcfce7!important;font-weight:700;}
+.pv-opt.correct .pv-badge{background:#16a34a;color:#fff;}
+.pv-badge{width:22px;height:22px;border-radius:5px;border:2px solid rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0;background:rgba(255,255,255,.7);}
+.pv-opt-img{max-height:44px;max-width:70px;object-fit:contain;border-radius:5px;flex-shrink:0;}
+.pv-info{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.pv-chip{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:5px;background:var(--paper2);color:rgba(26,26,46,.55);}
+.pv-show-ans{display:flex;align-items:center;gap:7px;font-size:.76rem;font-weight:600;color:rgba(26,26,46,.5);margin-bottom:10px;cursor:pointer;user-select:none;}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--primary);color:#fff;padding:10px 16px;border-radius:10px;font-size:.8rem;font-weight:600;z-index:9999;box-shadow:var(--shadow-lg);transform:translateY(60px);opacity:0;transition:.3s cubic-bezier(.34,1.56,.64,1);}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){:root{--sb:200px;}.grid4{grid-template-columns:1fr 1fr;}}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);width:var(--sb)!important;}
+  .sidebar.open{transform:translateX(0);}
+  .main,.main.wide{margin-left:0;}
+  .hamburger{display:flex;}
+  .topbar,.page{padding:11px 13px;}
+  .grid2,.grid3,.grid4{grid-template-columns:1fr;}
+  .sb-collapse-btn{display:none;}
+  .lib-actions{gap:3px;}
+  .lib-actions .btn{padding:4px 8px;}
+  .progress-grid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:480px){
+  .grade-row{grid-template-columns:40px 1fr 56px 28px;}
+  .rtbl th:nth-child(3),.rtbl td:nth-child(3){display:none;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-logo" id="loginLogo">🧪</div>
+    <h1 id="loginTitle">SecureQuiz</h1>
+    <p>Панель вчителя — увійдіть для доступу</p>
+    <div class="login-err" id="loginErr" style="display:none;"></div>
+    <!-- Основна форма -->
+    <div id="loginFormWrap">
+      <div class="fg"><label class="fl">Email</label>
+        <input type="text" id="loginEmail" placeholder="teacher@school.com" autocomplete="email" inputmode="email">
+      </div>
+      <div class="fg"><label class="fl">Пароль</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()" style="padding:11px;margin-bottom:10px;">Увійти →</button>
+      <div style="text-align:center;">
+        <span onclick="showForgotForm()" style="font-size:.76rem;color:var(--blue);cursor:pointer;text-decoration:underline;">Забули пароль?</span>
+      </div>
+    </div>
+    <!-- Скидання пароля -->
+    <div id="forgotFormWrap" style="display:none;">
+      <p style="font-size:.8rem;color:rgba(26,26,46,.5);margin-bottom:14px;">Введіть email — надішлемо посилання для скидання.</p>
+      <div class="fg"><label class="fl">Email</label>
+        <input type="text" id="forgotEmail" placeholder="teacher@school.com">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doForgotPassword()" style="padding:11px;margin-bottom:10px;">Надіслати лист →</button>
+      <div style="text-align:center;">
+        <span onclick="showLoginForm()" style="font-size:.76rem;color:var(--blue);cursor:pointer;text-decoration:underline;">← Назад до входу</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appWrap">
+
+<!-- MODALS -->
+<div class="modal-bg" id="launchModal">
+  <div class="modal">
+    <div class="flex-btw" style="margin-bottom:14px;">
+      <h3>🚀 Запуск тесту</h3>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('launchModal')">✕</button>
+    </div>
+
+    <!-- STEP 1: Class selection (shown before launch) -->
+    <div id="launchStep1">
+      <div class="fg" id="launchClassWrap">
+        <label class="fl">Оберіть клас для цієї сесії</label>
+        <select id="launchClassSelect" style="margin-bottom:0;">
+          <option value="">— Не вказувати клас —</option>
+        </select>
+        <div id="launchClassHint" style="font-size:.7rem;color:rgba(26,26,46,.4);margin-top:3px;display:none;"></div>
+      </div>
+      <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);border-radius:9px;padding:10px 13px;font-size:.76rem;color:rgba(37,99,235,.8);margin-bottom:14px;line-height:1.6;">
+        ℹ️ Обраний клас <strong>зафіксується в результаті кожного учня</strong> і не може бути змінений під час тесту.
+      </div>
+      <button class="btn btn-primary btn-full" onclick="confirmLaunchClass()" style="margin-bottom:0;">🔒 Зафіксувати клас і запустити →</button>
+    </div>
+
+    <!-- STEP 2: QR / Link (shown after launch) -->
+    <div id="launchStep2" style="display:none;">
+      <div id="launchClassBadge" style="display:flex;align-items:center;gap:8px;background:rgba(37,99,235,.07);border:1.5px solid rgba(37,99,235,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;">
+        <span style="font-size:.72rem;font-weight:700;color:rgba(37,99,235,.6);text-transform:uppercase;letter-spacing:.08em;">Клас сесії</span>
+        <span id="launchClassBadgeText" style="font-size:1.05rem;font-weight:800;color:#1e3a5f;">—</span>
+        <span style="margin-left:auto;font-size:.68rem;color:rgba(37,99,235,.5);font-weight:600;">🔒 зафіксовано</span>
+      </div>
+      <div id="qrWrap" class="qr-wrap" style="margin-top:0;margin-bottom:12px;"></div>
+      <div class="fg"><label class="fl">Посилання для учнів</label>
+        <div style="display:flex;gap:7px;">
+          <input type="text" id="examLink" readonly style="font-family:monospace;font-size:.75rem;">
+          <button class="btn btn-outline btn-sm" onclick="copyLink()">📋</button>
+        </div>
+      </div>
+      <div style="font-size:.76rem;color:rgba(26,26,46,.45);margin-bottom:10px;">Надішліть посилання або QR-код учням у Viber/Telegram.</div>
+      <div id="launchAutoStop" style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:9px;padding:10px 13px;font-size:.8rem;color:var(--blue);margin-bottom:12px;display:none;">
+        ⏰ Тест автоматично завершиться о <strong id="launchStopTime">—</strong>
+      </div>
+      <div id="launchStatus" style="font-size:.8rem;color:var(--green);font-weight:600;margin-bottom:12px;min-height:18px;"></div>
+      <button class="btn btn-danger btn-full" id="stopSessionBtn" onclick="stopActiveSession()" style="display:none;">⏹ Зупинити тест</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="previewModal">
+  <div class="modal" style="max-width:680px;">
+    <div class="flex-btw" style="margin-bottom:16px;">
+      <h3 id="previewTitle">👁 Попередній перегляд</h3>
+      <div style="display:flex;gap:7px;align-items:center;">
+        <span id="previewCounter" style="font-size:.78rem;color:rgba(26,26,46,.4);font-family:monospace;"></span>
+        <button class="btn btn-outline btn-sm" onclick="previewNav(-1)">◀</button>
+        <button class="btn btn-outline btn-sm" onclick="previewNav(1)">▶</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('previewModal')">✕</button>
+      </div>
+    </div>
+    <div id="previewBody"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:16px;gap:8px;">
+      <button class="btn btn-outline" onclick="previewNav(-1)">◀ Назад</button>
+      <button class="btn btn-primary" onclick="previewNav(1)">Далі ▶</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="ansModal">
+  <div class="modal">
+    <div class="flex-btw" style="margin-bottom:12px;">
+      <h3 id="ansModalTitle">Відповіді</h3>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('ansModal')">✕</button>
+    </div>
+    <div id="ansModalContent"></div>
+  </div>
+</div>
+
+<div class="mob-overlay" id="mobOverlay" onclick="closeMob()"></div>
+<div class="toast" id="toast"></div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon" id="sbLogoIcon">🧪</div>
+    <div class="sb-logo-text"><h1 id="sbLogoText">SecureQuiz</h1><span>Панель вчителя</span></div>
+  </div>
+  <div class="sb-sec">Тестування</div>
+  <div class="nav-item active" onclick="navTo('dash')" data-page="dash"><span class="nav-icon">🏠</span><span class="nav-label">Огляд</span></div>
+  <div class="nav-item" onclick="navTo('creator')" data-page="creator"><span class="nav-icon">✏️</span><span class="nav-label">Конструктор</span></div>
+  <div class="nav-item" onclick="navTo('library')" data-page="library"><span class="nav-icon">📚</span><span class="nav-label">Бібліотека</span></div>
+  <div class="nav-item" onclick="navTo('active')" data-page="active"><span class="nav-icon">🟢</span><span class="nav-label">Активні тести</span><span id="activeBadge" style="background:var(--accent);color:#fff;border-radius:100px;font-size:.6rem;font-weight:700;padding:1px 6px;margin-left:auto;display:none;">0</span></div>
+  <div class="sb-sec">Аналітика</div>
+  <div class="nav-item" onclick="navTo('results')" data-page="results"><span class="nav-icon">📊</span><span class="nav-label">Результати</span></div>
+  <div class="nav-item" onclick="navTo('archive')" data-page="archive"><span class="nav-icon">📁</span><span class="nav-label">Архів</span><span id="archiveBadge" style="background:var(--blue);color:#fff;border-radius:100px;font-size:.6rem;font-weight:700;padding:1px 6px;margin-left:auto;display:none;">0</span></div>
+  <div class="sb-sec">Налаштування</div>
+  <div class="nav-item" onclick="navTo('grades')" data-page="grades"><span class="nav-icon">🎓</span><span class="nav-label">Оцінки</span></div>
+  <div class="nav-item" onclick="navTo('myclasses')" data-page="myclasses"><span class="nav-icon">🏫</span><span class="nav-label">Мої класи</span></div>
+  <div class="nav-item" onclick="navTo('security')" data-page="security"><span class="nav-icon">🔒</span><span class="nav-label">Захист</span></div>
+  <div class="nav-item" onclick="navTo('settings')" data-page="settings"><span class="nav-icon">⚙️</span><span class="nav-label">Налаштування</span></div>
+  <div class="sb-foot">
+    <div class="sb-user" id="sbUser"></div>
+    <span class="sb-logout" onclick="doLogout()">Вийти з системи</span>
+  </div>
+</nav>
+
+<!-- SIDEBAR COLLAPSE BTN -->
+<button class="sb-collapse-btn" id="collapseBtn" onclick="toggleSidebar()" title="Приховати панель">◀</button>
+
+<!-- MAIN -->
+<div class="main" id="mainArea">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" id="hamburger" onclick="toggleMob()"><span></span><span></span><span></span></button>
+      <div class="topbar-title" id="topbarTitle">Огляд</div>
+    </div>
+
+  </div>
+
+  <!-- DASH -->
+  <div class="page active" id="page-dash">
+    <div class="firebase-notice" id="fbNotice" style="display:none;">
+      ⚠️ Firebase не налаштовано. Відкрийте <code>firebase-config.js</code> та вставте свої дані. <a href="#" onclick="navTo('settings')">Детальніше →</a>
+    </div>
+    <div class="grid4" style="margin-bottom:16px;">
+      <div class="stat-card"><div class="stat-val" id="dQ">0</div><div class="stat-lbl">Питань</div></div>
+      <div class="stat-card"><div class="stat-val" id="dLib">0</div><div class="stat-lbl">Тестів</div></div>
+      <div class="stat-card"><div class="stat-val" id="dActive" style="color:var(--green);">0</div><div class="stat-lbl">Активних</div></div>
+      <div class="stat-card"><div class="stat-val" id="dSt">0</div><div class="stat-lbl">Учасників</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="card-title">📋 Поточний тест</div><div id="dashPreview"><div class="empty-state"><div class="esi">✏️</div><p>Перейдіть до Конструктора</p></div></div></div>
+      <div class="card"><div class="card-title">🏆 Останні результати</div><div id="dashRecent"><div class="empty-state"><div class="esi">📊</div><p>Ще немає результатів</p></div></div></div>
+    </div>
+    <div class="card" style="margin-top:0;">
+      <div class="card-title">🟢 Прогрес учнів (активні тести)</div>
+      <div id="dashLiveProgress"><div class="empty-state" style="padding:20px;"><div class="esi">🟢</div><p>Немає активних тестів</p></div></div>
+    </div>
+  </div>
+
+  <!-- CREATOR -->
+  <div class="page" id="page-creator">
+    <div class="grid2" style="align-items:start;">
+      <div>
+        <div class="card">
+          <div class="card-title">📄 Тест</div>
+          <div class="fg"><label class="fl">Назва тесту</label><input type="text" id="testTitle" value="Мій тест" oninput="this._aiAutoFilled=false"></div>
+          <div class="grid2">
+            <div class="fg"><label class="fl">Предмет</label><input type="text" id="testSubject" placeholder="Хімія"></div>
+            <div class="fg"><label class="fl">Клас</label><input type="text" id="testClass" placeholder="7-А"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📥 Імпорт питань</div>
+          <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchImportTab('ai')">🤖 Імпорт ШІ</button>
+            <button class="tab-btn" onclick="switchImportTab('json')">{ } Імпорт НаУрок</button>
+          </div>
+          <div class="tab-panel" id="itab-json">
+            <div class="fg"><textarea id="importJson" style="min-height:120px;font-family:monospace;font-size:.74rem;" placeholder='{"questions":[...]} або НаУрок JSON'></textarea></div>
+            <div class="flex-btw"><div id="importJsonRes" style="font-size:.78rem;"></div><button class="btn btn-primary btn-sm" onclick="importJson()">📥 Імпортувати</button></div>
+          </div>
+          <div class="tab-panel active" id="itab-ai">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+              <div class="fg" style="margin-bottom:0;">
+                <label class="fl">Предмет</label>
+                <select id="aiSubjectSel" onchange="onAISubjectChange()">
+                  <option value="">— вибрати —</option>
+                </select>
+              </div>
+              <div class="fg" style="margin-bottom:0;">
+                <label class="fl">Паралель</label>
+                <select id="aiParallelSel" onchange="onAIParallelChange()">
+                  <option value="">— вибрати —</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 80px;gap:8px;margin-bottom:10px;">
+              <div class="fg" style="margin-bottom:0;">
+                <label class="fl">Тема</label>
+                <input type="text" id="aiTopic" placeholder="Наприклад: Хімічні реакції" oninput="onAITopicInput()">
+              </div>
+              <div class="fg" style="margin-bottom:0;">
+                <label class="fl">К-сть питань</label>
+                <input type="number" id="aiQCount" value="10" min="1" max="50" oninput="updateAIPrompt()">
+              </div>
+            </div>
+            <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);border-radius:9px;padding:9px 12px;margin-bottom:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <span style="font-size:.72rem;font-weight:700;color:var(--blue);">📋 Промт для будь-якого ШІ</span>
+                <button class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 9px;" onclick="copyAIPrompt()">📋 Скопіювати</button>
+              </div>
+              <div id="aiPromptBox" style="font-size:.68rem;font-family:monospace;color:rgba(26,26,46,.6);line-height:1.6;background:#fff;border-radius:7px;padding:7px 9px;max-height:100px;overflow-y:auto;user-select:text;cursor:text;white-space:pre-wrap;"></div>
+            </div>
+            <div class="fg"><textarea id="importAI" style="min-height:130px;font-family:monospace;font-size:.74rem;" placeholder="Вставте відповідь ШІ сюди...&#10;&#10;?Яка столиця України?&#10;+Київ&#10;-Харків&#10;-Одеса&#10;-Дніпро"></textarea></div>
+            <div class="flex-btw"><div id="importAIRes" style="font-size:.78rem;"></div><button class="btn btn-primary btn-sm" onclick="importAIText()">🔍 Розпізнати і додати</button></div>
+          </div>
+        </div>
+
+        <div class="flex-btw" style="margin-bottom:9px;">
+          <div style="font-size:.95rem;font-weight:800;">Питання <span id="qCount" style="color:var(--accent);"></span></div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-outline btn-sm" onclick="clearQs()">🗑</button>
+            <button class="btn btn-primary btn-sm" onclick="addQ()">＋ Додати</button>
+          </div>
+        </div>
+        <div id="qCont"><div class="empty-state" id="qEmpty"><div class="esi">✏️</div><p>Додайте або імпортуйте</p></div></div>
+      </div>
+
+      <div style="position:sticky;top:60px;">
+        <div class="card">
+          <div class="card-title">🚀 Налаштування запуску</div>
+          <!-- Timer mode -->
+          <div class="fg">
+            <label class="fl">Режим таймера</label>
+            <select id="timerMode">
+              <option value="total">⏱ Час на весь тест</option>
+              <option value="perq">⏰ Час на кожне питання</option>
+            </select>
+          </div>
+          <div class="fg" id="timerTotalWrap">
+            <label class="fl">Час (хвилин)</label>
+            <input type="number" id="testTime" value="15" min="1" max="180">
+          </div>
+          <div class="fg" id="timerPerQWrap" style="display:none;">
+            <label class="fl">Секунд на питання</label>
+            <input type="number" id="testTimePerQ" value="30" min="5" max="300">
+          </div>
+          <!-- Finish conditions -->
+          <div class="card-title" style="margin-top:10px;">⚙️ Умови завершення</div>
+          <div class="tog-row"><label class="tog"><input type="checkbox" id="finishOnTime" checked><span class="tog-tr"></span></label><div><div class="tl">Завершити автоматично</div><div class="td2">Зупинити для всіх через (тривалість + 5 хв) від запуску</div></div></div>
+          <div class="divider"></div>
+          <div id="crSec" style="margin-bottom:12px;"></div>
+          <button class="btn btn-outline btn-full" style="margin-bottom:7px;" onclick="openPreview()">👁 Попередній перегляд</button>
+          <button class="btn btn-green btn-full" style="margin-bottom:7px;" onclick="saveToLib()">💾 Зберегти</button>
+          <button class="btn btn-primary btn-full" onclick="openLaunchDialog()">▶ Запустити</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIBRARY -->
+  <div class="page" id="page-library">
+    <div class="flex-btw" style="margin-bottom:10px;">
+      <div style="font-size:1.1rem;font-weight:800;">Бібліотека тестів</div>
+      <button class="btn btn-outline btn-sm" onclick="navTo('creator')">＋ Новий</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <input type="text" id="libSearch" placeholder="🔍 Пошук тесту..." oninput="renderLib()" style="flex:1;min-width:140px;font-size:.82rem;padding:7px 11px;">
+      <select id="libFS" style="width:auto;font-size:.78rem;padding:5px 9px;" onchange="renderLib()"><option value="">Всі предмети</option></select>
+      <select id="libFC" style="width:auto;font-size:.78rem;padding:5px 9px;" onchange="renderLib()"><option value="">Всі класи</option></select>
+    </div>
+    <div id="libList"><div class="empty-state"><div class="esi">📚</div><p>Збережених тестів ще немає.</p></div></div>
+  </div>
+
+  <!-- ACTIVE TESTS -->
+  <div class="page" id="page-active">
+    <div class="flex-btw" style="margin-bottom:14px;">
+      <div style="font-size:1.1rem;font-weight:800;">🟢 Активні тести</div>
+      <button class="btn btn-outline btn-sm" onclick="renderActiveSessions()">🔄 Оновити</button>
+    </div>
+    <div id="activeList"><div class="empty-state"><div class="esi">🟢</div><p>Немає активних тестів.<br>Запустіть тест з конструктора.</p></div></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="page" id="page-results">
+    <div class="flex-btw" style="margin-bottom:10px;">
+      <div style="font-size:1.1rem;font-weight:800;">📊 Результати</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <select id="resFilter" style="width:auto;font-size:.78rem;padding:5px 9px;" onchange="renderResultsPage()"><option value="">Всі тести</option></select>
+        <select id="resClassFilter" style="width:auto;font-size:.78rem;padding:5px 9px;" onchange="renderResultsPage()"><option value="">Всі класи</option></select>
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportResultsPDF()" style="color:#dc2626;border-color:rgba(220,38,38,.3);">📄 PDF</button>
+        <button class="btn btn-danger btn-sm" onclick="clearResults()">🗑</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:8px 12px;background:var(--paper2);border-radius:9px;flex-wrap:wrap;">
+      <span style="font-size:.72rem;font-weight:700;color:rgba(26,26,46,.45);text-transform:uppercase;letter-spacing:.06em;">Сортувати всі:</span>
+      <button class="btn btn-outline btn-sm" id="gSortStudent" onclick="setGlobalSort('student')" style="font-size:.74rem;">За прізвищем</button>
+      <button class="btn btn-outline btn-sm" id="gSortPct" onclick="setGlobalSort('pct')" style="font-size:.74rem;">За оцінкою ↑</button>
+      <button class="btn btn-outline btn-sm" id="gSortPctD" onclick="setGlobalSort('pctD')" style="font-size:.74rem;">За оцінкою ↓</button>
+    </div>
+    <div id="sessionList"><div class="empty-state"><div class="esi">📊</div><p>Ще немає результатів.</p></div></div>
+  </div>
+
+  <!-- ARCHIVE -->
+  <div class="page" id="page-archive">
+    <div class="flex-btw" style="margin-bottom:10px;">
+      <div style="font-size:1.1rem;font-weight:800;">🗂 Архів — перенесено у журнал</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="exportArchiveCSV()">⬇ CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportArchivePDF()" style="color:#dc2626;border-color:rgba(220,38,38,.3);">📄 PDF</button>
+        <button class="btn btn-danger btn-sm" onclick="clearArchive()">🗑 Очистити архів</button>
+      </div>
+    </div>
+    <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.18);border-radius:10px;padding:10px 14px;font-size:.78rem;color:rgba(37,99,235,.8);margin-bottom:14px;line-height:1.55;">
+      📋 Тут зберігаються сесії, позначені <strong>✓ Перенесено у журнал</strong> на сторінці Результатів. Зніміть позначку, щоб повернути сесію до Результатів.
+    </div>
+    <div id="archiveList"><div class="empty-state"><div class="esi">🗂</div><p>Архів порожній.<br>Позначте результати як «Перенесено у журнал» на сторінці Результатів.</p></div></div>
+  </div>
+
+  <!-- GRADES -->
+  <div class="page" id="page-grades">
+    <div class="grid2" style="align-items:start;">
+      <div class="card">
+        <div class="card-title">🎓 Система оцінювання</div>
+        <div class="fg"><label class="fl">Шкала</label>
+          <select id="gradeSystem" onchange="renderGrades()">
+            <option value="12">12-бальна (за замовчуванням)</option>
+            <option value="10">10-бальна</option>
+          </select>
+        </div>
+        <div id="gradeEditor"></div>
+        <div class="divider"></div>
+        <div class="fg"><label class="fl">Прохідний бал (%)</label><input type="number" id="passThreshold" value="50" min="0" max="100"></div>
+        <button class="btn btn-green btn-sm btn-full" onclick="saveGradeSettings()" style="margin-top:4px;">💾 Зберегти оцінки та гасла</button>
+      </div>
+      <div>
+        <div class="card"><div class="card-title">Шкала оцінок</div><div id="gradePreview" style="background:var(--paper);border-radius:9px;padding:12px;"></div></div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MY CLASSES -->
+  <div class="page" id="page-myclasses">
+    <div class="grid2" style="align-items:start;">
+      <div class="card">
+        <div class="card-title">🏫 Мої класи</div>
+        <div class="text-sm" style="margin-bottom:12px;opacity:.7;">Формат: <strong>7-А</strong>, <strong>9-Б</strong>, <strong>11-В</strong></div>
+        <div id="classesEditor"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <input type="text" id="newClassInput" placeholder="7-А" style="max-width:110px;" onkeydown="if(event.key==='Enter')addClass()">
+          <button class="btn btn-primary btn-sm" onclick="addClass()">＋ Додати</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🎨 Кольори паралелей</div>
+        <div class="text-sm" style="margin-bottom:10px;opacity:.7;">Ці кольори відображаються в іконках класів у бібліотеці та результатах</div>
+        <div id="parallelColorsEditor"></div>
+        <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="saveParallelColors()">💾 Зберегти кольори</button>
+      </div>
+      <div class="card">
+        <div class="card-title">🔢 Мої паралелі</div>
+        <div class="text-sm" style="margin-bottom:12px;opacity:.7;">Паралель = номер класу, напр. <strong>7 клас</strong>, <strong>10 клас</strong>. Використовується у конструкторі та промті для ШІ.</div>
+        <div id="parallelsEditor"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <input type="number" id="newParallelInput" placeholder="7" min="1" max="12" style="max-width:80px;" onkeydown="if(event.key==='Enter')addParallel()">
+          <button class="btn btn-primary btn-sm" onclick="addParallel()">＋ Додати</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📚 Мої предмети</div>
+        <div class="text-sm" style="margin-bottom:12px;opacity:.7;">Предмети доступні у конструкторі та промті для ШІ</div>
+        <div id="subjectsEditor"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <input type="text" id="newSubjectInput" placeholder="Хімія" style="flex:1;" onkeydown="if(event.key==='Enter')addSubject()">
+          <button class="btn btn-primary btn-sm" onclick="addSubject()">＋ Додати</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECURITY -->
+  <div class="page" id="page-security">
+    <div class="grid2" style="align-items:start;">
+      <div class="card">
+        <div class="card-title">🛡 Захист від списування</div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-tab" checked><span class="tog-tr"></span></label><div><div class="tl">Моніторинг вкладок</div><div class="td2">Фіксує перехід на іншу вкладку</div></div></div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-blur" checked><span class="tog-tr"></span></label><div><div class="tl">Розмиття при відволіканні</div><div class="td2">Тест розмивається при втраті фокусу</div></div></div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-ctx" checked><span class="tog-tr"></span></label><div><div class="tl">Блок правої кнопки</div><div class="td2">Контекстне меню вимкнено</div></div></div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-copy" checked><span class="tog-tr"></span></label><div><div class="tl">Блок копіювання</div><div class="td2">Ctrl+C та виділення заборонено</div></div></div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-prtsc" checked><span class="tog-tr"></span></label><div><div class="tl">Виявлення Print Screen</div><div class="td2">Фіксує PrtSc (Desktop)</div></div></div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-wm" checked><span class="tog-tr"></span></label><div><div class="tl">Водяний знак</div><div class="td2">Ім'я учня поверх контенту — захист від фото</div></div></div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-shuffle" checked><span class="tog-tr"></span></label><div><div class="tl">Перемішати питання і варіанти</div><div class="td2">Кожен учень бачить різний порядок</div></div></div>
+        <div class="divider"></div>
+        <div class="fg"><label class="fl">Макс. порушень до завершення</label><input type="number" id="s-maxviol" value="3" min="1" max="20"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔍 Аудит безпеки</div>
+        <div id="secAudit" style="font-size:.8rem;line-height:2;">
+          Завантаження…
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="runSecAudit()">🔄 Перевірити зараз</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📱 Про захист на смартфонах</div>
+        <div class="text-sm" style="line-height:1.85;">
+          <p style="margin-bottom:8px;"><strong>Водяний знак</strong> — найефективніший захист. Ім'я учня видно на будь-якому фото.</p>
+          <p style="margin-bottom:8px;"><strong>Android:</strong> Блокується виділення тексту. PrtSc робить скріншот системно (не блокується), але водяний знак залишається.</p>
+          <p style="margin-bottom:8px;"><strong>iOS:</strong> При спробі скріншоту екран на секунду стає білим (CSS-трюк з <code>mix-blend-mode</code>).</p>
+          <p style="opacity:.55;font-size:.72rem;margin-top:8px;">⚠️ Жоден браузер не може повністю заблокувати системний знімок екрана — це обмеження ОС.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="grid2" style="align-items:start;">
+      <div>
+        <div class="card">
+          <div class="card-title">🔑 Акаунт вчителя</div>
+          <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);border-radius:9px;padding:10px 13px;font-size:.76rem;color:rgba(37,99,235,.8);margin-bottom:14px;line-height:1.6;">
+            🔐 Захист через Firebase Authentication. Пароль зберігається на серверах Google — не в браузері. Збережений HTML-файл без активної Firebase-сесії нічого не покаже.
+          </div>
+          <div style="padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px;">
+            <div style="font-size:.67rem;font-weight:700;color:rgba(26,26,46,.42);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">Поточний email</div>
+            <div id="currentEmailDisplay" style="font-size:.88rem;font-weight:700;color:var(--blue);">—</div>
+          </div>
+          <div class="fg"><label class="fl">Новий пароль (мін. 6 символів)</label><input type="password" id="sNewPass" placeholder="••••••••"></div>
+          <div class="fg"><label class="fl">Підтвердити</label><input type="password" id="sNewPass2"></div>
+          <div id="sMsg" style="font-size:.8rem;margin-bottom:9px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="saveAuthSettings()">💾 Змінити пароль</button>
+            <button class="btn btn-outline" onclick="sendResetEmail()">📧 Скинути через email</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔥 Firebase конфігурація</div>
+          <div class="text-sm" style="line-height:1.85;margin-bottom:12px;">
+            <p style="margin-bottom:6px;">1. Зайдіть на <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);">console.firebase.google.com</a></p>
+            <p style="margin-bottom:6px;">2. Створіть проєкт → Додайте веб-додаток</p>
+            <p style="margin-bottom:6px;">3. Build → Realtime Database → Create database (регіон: europe-west1)</p>
+            <p style="margin-bottom:6px;">4. Rules: <code style="background:var(--paper2);padding:1px 5px;border-radius:4px;">{ "rules": { ".read": true, ".write": true } }</code></p>
+            <p style="margin-bottom:6px;">5. Відкрийте файл <code>firebase-config.js</code> та вставте конфіг зі свого проєкту</p>
+          </div>
+          <div id="fbStatus" style="font-size:.8rem;"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-title">🎨 Тема оформлення</div>
+          <div class="fg"><label class="fl">Колір панелі навігації</label>
+            <input type="color" id="themeColor" value="#1a1a2e" oninput="applyTheme()">
+          </div>
+          <div class="fg"><label class="fl">Акцентний колір</label>
+            <input type="color" id="themeAccent" value="#c84b31" oninput="applyTheme()">
+          </div>
+          <div class="fg"><label class="fl">Логотип (emoji або URL)</label>
+            <input type="text" id="themeLogo" placeholder="🧪 або https://…/logo.png" oninput="applyTheme()">
+          </div>
+          <div class="fg"><label class="fl">Назва системи</label>
+            <input type="text" id="themeName" placeholder="SecureQuiz" oninput="applyTheme()">
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="saveTheme()">💾 Зберегти тему</button>
+            <button class="btn btn-outline" onclick="resetTheme()">↺ Скинути</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🌐 Де безкоштовно розмістити</div>
+          <div class="text-sm" style="line-height:1.9;">
+            <p style="margin-bottom:7px;">📦 <strong>GitHub Pages</strong> — найпростіше:<br>1. Завантажте файли на GitHub<br>2. Settings → Pages → main branch<br>Посилання: <code>username.github.io/repo</code></p>
+            <p style="margin-bottom:7px;">⚡ <strong>Netlify</strong> — перетягніть папку на netlify.com/drop<br>Посилання одразу готове!</p>
+            <p style="margin-bottom:7px;">🔥 <strong>Firebase Hosting</strong> — разом з базою:<br><code>firebase deploy --only hosting</code></p>
+            <p style="opacity:.55;font-size:.72rem;">Всі варіанти безкоштовні для освітнього використання.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+'use strict';
+// ══ FIREBASE + AUTH ══
+let db=null, auth=null, currentUser=null;
+
+function initFirebase(){
+  try{
+    if(typeof FIREBASE_CONFIG==='undefined'||FIREBASE_CONFIG.apiKey==='YOUR_API_KEY'){
+      document.getElementById('fbNotice').style.display='block';
+      document.getElementById('fbStatus').innerHTML='<span style="color:var(--accent)">⚠️ Firebase не налаштовано. Відкрийте firebase-config.js</span>';
+      return;
+    }
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db=firebase.database();
+    auth=firebase.auth();
+    document.getElementById('fbStatus').innerHTML='<span style="color:var(--green)">✅ Firebase підключено</span>';
+
+    // ══ ГОЛОВНИЙ ОХОРОНЕЦЬ ══
+    // Панель відкривається ТІЛЬКИ тут — після підтвердження Firebase.
+    // Навіть якщо хтось збереже HTML — без Google-сесії onAuthStateChanged
+    // поверне null і покаже лише форму входу.
+    auth.onAuthStateChanged(user=>{
+      if(user){
+        currentUser=user;
+        el('loginWrap').style.display='none';
+        el('appWrap').classList.add('show');
+        el('sbUser').textContent='👤 '+(user.email||'вчитель');
+        const ced=el('currentEmailDisplay');if(ced)ced.textContent=user.email||'—';
+        // Синхронізація даних тільки після підтвердженої auth
+        syncMyClasses();
+        startListeningActiveSessions();
+        syncResultsFromFirebase(); // Firebase дані мають пріоритет
+        syncLibrary();
+        // Завантажуємо локальний кеш ТІЛЬКИ як тимчасовий fallback поки Firebase не відповів
+        if(!_resultsCache.length){
+          try{_resultsCache=JSON.parse(localStorage.getItem('sqpro_results')||'[]');}catch{_resultsCache=[];}
+        }
+        if(!window._appInited){window._appInited=true;_postAuthInit();}
+      } else {
+        currentUser=null;
+        el('loginWrap').style.display='';
+        el('appWrap').classList.remove('show');
+        showLoginForm();
+      }
+    });
+  }catch(e){
+    document.getElementById('fbStatus').innerHTML='<span style="color:var(--accent)">❌ Помилка Firebase: '+e.message+'</span>';
+  }
+}
+
+// ══ AUTH HELPERS ══
+function showLoginForm(){
+  el('loginFormWrap').style.display='block';
+  el('forgotFormWrap').style.display='none';
+  const err=el('loginErr');err.style.display='none';err.textContent='';
+  setTimeout(()=>el('loginEmail')?.focus(),80);
+}
+function showForgotForm(){
+  el('loginFormWrap').style.display='none';
+  el('forgotFormWrap').style.display='block';
+  el('loginErr').style.display='none';
+  setTimeout(()=>el('forgotEmail')?.focus(),80);
+}
+
+let _loginLastAttempt=0;
+async function doLogin(){
+  const now=Date.now();
+  if(now-_loginLastAttempt<3000){
+    const err=el('loginErr');err.textContent='Зачекайте кілька секунд перед наступною спробою';err.style.display='block';return;
+  }
+  _loginLastAttempt=now;
+  const email=(v('loginEmail')||'').trim(), pass=v('loginPass');
+  const err=el('loginErr'); err.style.display='none';
+  if(!email||!pass){err.textContent='Введіть email та пароль';err.style.display='block';return;}
+  const btn=el('loginBtn'); btn.textContent='…'; btn.disabled=true;
+  try{
+    await auth.signInWithEmailAndPassword(email,pass);
+    // onAuthStateChanged відкриє панель автоматично
+  }catch(e){
+    btn.textContent='Увійти →'; btn.disabled=false;
+    const msgs={'auth/user-not-found':'Користувача не знайдено','auth/wrong-password':'Невірний пароль',
+      'auth/invalid-email':'Невірний формат email','auth/too-many-requests':'Забагато спроб. Зачекайте хвилину.',
+      'auth/invalid-credential':'Невірний email або пароль'};
+    err.textContent=msgs[e.code]||('Помилка входу'); err.style.display='block'; // не розкриваємо деталі помилки
+    el('loginPass').value='';
+  }
+}
+
+async function doForgotPassword(){
+  const email=(v('forgotEmail')||'').trim();
+  const err=el('loginErr');
+  if(!email){err.textContent='Введіть email';err.style.display='block';return;}
+  try{
+    await auth.sendPasswordResetEmail(email);
+    err.style.cssText='display:block;background:rgba(22,163,74,.1);color:var(--green);border-radius:8px;padding:10px;font-size:.82rem;margin-bottom:12px;';
+    err.textContent='✅ Лист надіслано на '+email;
+  }catch(e){
+    err.style.cssText='display:block;background:rgba(200,75,49,.1);color:var(--accent);border-radius:8px;padding:10px;font-size:.82rem;margin-bottom:12px;';
+    err.textContent='Помилка: '+e.message;
+  }
+}
+
+function loggedIn(){return!!currentUser;}
+
+function doLogout(){if(auth)auth.signOut();}
+
+function saveAuthSettings(){
+  const np=v('sNewPass'), np2=v('sNewPass2'), msg=el('sMsg');
+  if(np.length<6){msg.style.color='var(--accent)';msg.textContent='❌ Мінімум 6 символів';return;}
+  if(np!==np2){msg.style.color='var(--accent)';msg.textContent='❌ Паролі не збігаються';return;}
+  if(!currentUser){msg.style.color='var(--accent)';msg.textContent='❌ Не авторизовано';return;}
+  currentUser.updatePassword(np)
+    .then(()=>{msg.style.color='var(--green)';msg.textContent='✅ Пароль змінено';el('sNewPass').value='';el('sNewPass2').value='';toast('Пароль оновлено');})
+    .catch(e=>{msg.style.color='var(--accent)';msg.textContent=e.code==='auth/requires-recent-login'?'❌ Вийдіть і зайдіть знову':'❌ '+e.message;});
+}
+
+function sendResetEmail(){
+  if(!currentUser?.email){toast('Не авторизовано');return;}
+  auth.sendPasswordResetEmail(currentUser.email)
+    .then(()=>toast('📧 Лист надіслано на '+currentUser.email))
+    .catch(e=>toast('Помилка: '+e.message));
+}
+
+function syncAuthFromFirebase(){/* замінено Firebase Auth — не потрібно */}
+
+// ══ THEME ══
+function applyTheme(){
+  const c=v('themeColor')||'#1a1a2e';
+  const acc=v('themeAccent')||'#c84b31';
+  const logo=v('themeLogo')||'🧪';
+  const name=v('themeName')||'SecureQuiz';
+  document.documentElement.style.setProperty('--primary',c);
+  document.documentElement.style.setProperty('--accent',acc);
+  const li=el('sbLogoIcon'),ll=el('loginLogo'),ltt=el('loginTitle'),lt=el('sbLogoText');
+  const isUrl=logo.startsWith('http')||logo.startsWith('/');
+  if(li){if(isUrl)li.innerHTML=`<img src="${logo}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">`;else li.textContent=logo;}
+  if(ll){if(isUrl)ll.innerHTML=`<img src="${logo}" style="width:48px;height:48px;object-fit:contain;border-radius:10px;">`;else ll.textContent=logo;}
+  if(lt)lt.textContent=name;
+  if(ltt)ltt.textContent=name;
+  document.title=name+' — Панель вчителя';
+  let fav=document.querySelector("link[rel~='icon']");
+  if(!fav){fav=document.createElement('link');fav.rel='icon';document.head.appendChild(fav);}
+  fav.href=isUrl?logo:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>"+encodeURIComponent(logo)+"</text></svg>";
+}
+function saveTheme(){
+  localStorage.setItem('sqpro_theme',JSON.stringify({color:v('themeColor'),accent:v('themeAccent'),logo:v('themeLogo'),name:v('themeName')}));
+  applyTheme(); toast('Тему збережено');
+}
+function resetTheme(){
+  localStorage.removeItem('sqpro_theme');
+  el('themeColor').value='#1a1a2e';el('themeAccent').value='#c84b31';
+  el('themeLogo').value='🧪';el('themeName').value='SecureQuiz';
+  document.documentElement.style.removeProperty('--primary');
+  document.documentElement.style.removeProperty('--accent');
+  applyTheme(); toast('Тему скинуто');
+}
+function loadTheme(){
+  try{
+    const t=JSON.parse(localStorage.getItem('sqpro_theme'));
+    if(!t)return;
+    if(t.color)el('themeColor').value=t.color;
+    if(t.accent)el('themeAccent').value=t.accent;
+    if(t.logo)el('themeLogo').value=t.logo;
+    if(t.name)el('themeName').value=t.name;
+    applyTheme();
+  }catch{}
+}
+
+// ══ SIDEBAR COLLAPSE ══
+let sidebarCollapsed=false;
+function toggleSidebar(){
+  sidebarCollapsed=!sidebarCollapsed;
+  el('sidebar').classList.toggle('collapsed',sidebarCollapsed);
+  el('mainArea').classList.toggle('wide',sidebarCollapsed);
+  el('collapseBtn').textContent=sidebarCollapsed?'▶':'◀';
+}
+
+// ══ MOBILE ══
+function toggleMob(){const s=el('sidebar'),o=el('mobOverlay'),b=el('hamburger');const op=s.classList.toggle('open');o.classList.toggle('show',op);b.classList.toggle('open',op);}
+function closeMob(){el('sidebar').classList.remove('open');el('mobOverlay').classList.remove('show');el('hamburger').classList.remove('open');}
+
+// ══ NAV ══
+const PT={dash:'Огляд',creator:'Конструктор тесту',library:'Бібліотека тестів',active:'Активні тести',results:'Результати',archive:'Архів — журнал',grades:'Система оцінювання',myclasses:'Мої класи',security:'Захист',settings:'Налаштування'};
+function navTo(p){
+  closeMob();
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  el('page-'+p).classList.add('active');
+  document.querySelector('[data-page="'+p+'"]').classList.add('active');
+  el('topbarTitle').textContent=PT[p]||'';
+  if(p==='dash')renderDash();
+  if(p==='grades')renderGrades();
+  if(p==='results'){renderResultsPage();updateResFilter();}
+  if(p==='archive'){renderArchivePage();}
+  if(p==='myclasses'){renderMyClasses();renderSubjectsEditor();renderParallelsEditor();}
+  if(p==='library'){updateLibFilters();renderLib();}
+  if(p==='creator')renderCreatorPanel();
+  if(p==='active')renderActiveSessions();
+  if(p==='security'){renderCreatorPanel();setTimeout(runSecAudit,300);}
+}
+
+// ══ IMPORT TABS ══
+function switchImportTab(t){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['ai','json'][i]===t));
+  el('itab-ai').classList.toggle('active',t==='ai');
+  el('itab-json').classList.toggle('active',t==='json');
+}
+// Timer mode
+el('timerMode').addEventListener('change',()=>{
+  const pm=v('timerMode')==='perq';
+  el('timerTotalWrap').style.display=pm?'none':'block';
+  el('timerPerQWrap').style.display=pm?'block':'none';
+});
+
+// ══ QUESTIONS ══
+let questions=[];
+function addQ(data){
+  questions.push(data||{text:'',options:['','','',''],correctIndices:[0],isMultiple:false,points:1,imageUrl:null,optionImages:null});
+  el('qEmpty')?.remove(); rebuildQs();
+}
+function rebuildQs(){
+  const c=el('qCont'); c.innerHTML='';
+  el('qCount').textContent=questions.length?'('+questions.length+')':'';
+  if(!questions.length){c.innerHTML='<div class="empty-state" id="qEmpty"><div class="esi">✏️</div><p>Додайте або імпортуйте питання</p></div>';renderCreatorPanel();renderDash();return;}
+  questions.forEach((_,i)=>{const d=document.createElement('div');d.id='qc-'+i;c.appendChild(d);buildQCard(d,i);});
+  renderCreatorPanel(); renderDash();
+}
+function buildQCard(el2,idx){
+  const q=questions[idx]; el2.className='q-card';
+  // Head
+  const hd=document.createElement('div'); hd.className='q-head';
+  const num=document.createElement('span'); num.className='q-num'; num.textContent='#'+(idx+1);
+  const hr=document.createElement('div'); hr.style.cssText='display:flex;gap:5px;align-items:center;flex-wrap:wrap;';
+  // Multiple checkbox
+  const ml=document.createElement('label'); ml.style.cssText='display:flex;align-items:center;gap:4px;font-size:.72rem;font-weight:600;cursor:pointer;';
+  ml.addEventListener('click',e=>e.stopPropagation());
+  const mc=document.createElement('input'); mc.type='checkbox'; mc.checked=!!q.isMultiple; mc.style.cssText='width:auto;cursor:pointer;';
+  mc.addEventListener('change',e=>{
+    e.stopPropagation();
+    questions[idx].isMultiple=mc.checked;
+    if(!mc.checked&&(questions[idx].correctIndices||[]).length>1) questions[idx].correctIndices=[questions[idx].correctIndices[0]];
+    // Refresh only option buttons without full rebuild
+    const ow=el('opts-'+idx);
+    if(ow){
+      ow.querySelectorAll('.cbtn').forEach((btn,i)=>{
+        const isC=(questions[idx].correctIndices||[]).includes(i);
+        btn.className='cbtn'+(isC?(mc.checked?' on-multi':' on'):'');
+        btn.textContent=isC?'✓':'○';
+      });
+    }
+    // Update hint text
+    const hint=el2.querySelector('.multi-hint-txt');
+    if(hint) hint.style.display=mc.checked?'block':'none';
+  });
+  ml.append(mc,'Множинний');
+  // Points
+  const pl2=document.createElement('label'); pl2.className='fl'; pl2.style.cssText='margin:0;white-space:nowrap;'; pl2.textContent='Балів:';
+  const pi=document.createElement('input'); pi.type='number'; pi.className='qpts'; pi.value=q.points||1; pi.min='.5'; pi.max='100'; pi.step='.5';
+  pi.addEventListener('input',()=>{questions[idx].points=parseFloat(pi.value)||1;});
+  const db2=document.createElement('button'); db2.className='btn btn-danger btn-sm'; db2.textContent='✕';
+  db2.addEventListener('click',()=>{questions.splice(idx,1);rebuildQs();});
+  hr.append(ml,pl2,pi,db2); hd.append(num,hr); el2.appendChild(hd);
+  // Textarea
+  const ta=document.createElement('textarea'); ta.placeholder='Текст питання...'; ta.style.cssText='margin-bottom:8px;font-size:.86rem;';
+  ta.addEventListener('input',()=>{questions[idx].text=ta.value;});
+  ta.addEventListener('change',()=>{questions[idx].text=ta.value;});
+  el2.appendChild(ta);
+  // Set value after append to avoid contenteditable issues
+  ta.value=q.text||'';
+  // Q image
+  const qil=document.createElement('label'); qil.className='fl'; qil.textContent='Зображення питання (URL)'; el2.appendChild(qil);
+  const qii=document.createElement('input'); qii.type='url'; qii.placeholder='https://…'; qii.value=q.imageUrl||''; qii.style.cssText='font-size:.74rem;margin-bottom:7px;';
+  qii.addEventListener('input',()=>{questions[idx].imageUrl=qii.value||null;refreshQImg(idx);}); el2.appendChild(qii);
+  if(q.imageUrl){const img=document.createElement('img');img.className='q-img-prev';img.src=q.imageUrl;img.id='qimg-'+idx;img.onerror=()=>img.style.display='none';el2.appendChild(img);}
+  const mhint=document.createElement('div');mhint.className='text-sm multi-hint-txt';mhint.style.cssText='margin-bottom:6px;color:var(--blue);font-weight:600;display:'+(q.isMultiple?'block':'none');mhint.textContent='Позначте всі правильні відповіді (✓)';el2.appendChild(mhint);
+  // Options
+  const ow=document.createElement('div'); ow.id='opts-'+idx;
+  (q.options||[]).forEach((o,oi)=>ow.appendChild(buildOptRow(idx,oi,o,(q.correctIndices||[]).includes(oi),q.optionImages?.[oi]||null)));
+  el2.appendChild(ow);
+  // Add option
+  const ao=document.createElement('button'); ao.className='btn btn-outline btn-sm'; ao.style.marginTop='5px'; ao.textContent='＋ Варіант';
+  ao.addEventListener('click',()=>{
+    if(questions[idx].options.length>=6)return;
+    questions[idx].options.push('');
+    if(!questions[idx].optionImages)questions[idx].optionImages=new Array(questions[idx].options.length).fill(null);
+    else questions[idx].optionImages.push(null);
+    ow.appendChild(buildOptRow(idx,questions[idx].options.length-1,'',false,null));
+  });
+  el2.appendChild(ao);
+}
+function refreshQImg(idx){const img=el('qimg-'+idx);const url=questions[idx].imageUrl;if(img){img.style.display=url?'block':'none';if(url)img.src=url;}}
+function buildOptRow(qi,oi,val,isCorr,imgUrl){
+  const wrap=document.createElement('div'); wrap.style.marginBottom='7px';
+  const row=document.createElement('div'); row.className='opt-row';
+  const btn=document.createElement('button');
+  btn.className='cbtn'+(isCorr?(questions[qi].isMultiple?' on-multi':' on'):'');
+  btn.textContent=isCorr?'✓':'○';
+  btn.dataset.oi=oi; // Store option index on button
+  btn.type='button'; // Prevent form submit
+  btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggleCorrect(qi,oi);});
+  const inp=document.createElement('input'); inp.type='text'; inp.placeholder='Варіант '+(oi+1);
+  inp.addEventListener('input',()=>{questions[qi].options[oi]=inp.value;});
+  inp.addEventListener('change',()=>{questions[qi].options[oi]=inp.value;});
+  row.append(btn,inp); wrap.appendChild(row);
+  inp.value=val||'';
+  const oii=document.createElement('input'); oii.type='url'; oii.placeholder='URL зображення для варіанту (необов.)';
+  oii.value=imgUrl||''; oii.style.cssText='font-size:.7rem;margin-left:34px;width:calc(100% - 34px);';
+  oii.addEventListener('input',()=>{if(!questions[qi].optionImages)questions[qi].optionImages=new Array(questions[qi].options.length).fill(null);questions[qi].optionImages[oi]=oii.value||null;});
+  wrap.appendChild(oii);
+  return wrap;
+}
+function toggleCorrect(qi,oi){
+  const q=questions[qi];
+  if(!q.correctIndices)q.correctIndices=[];
+  if(q.isMultiple){
+    const i=q.correctIndices.indexOf(oi);
+    if(i>=0)q.correctIndices.splice(i,1);
+    else q.correctIndices.push(oi);
+  } else {
+    q.correctIndices=[oi];
+  }
+  // Refresh buttons using data-oi (not DOM index which can be wrong)
+  const ow=el('opts-'+qi);
+  if(ow){
+    ow.querySelectorAll('.cbtn[data-oi]').forEach(btn=>{
+      const bOi=parseInt(btn.dataset.oi);
+      const isCorr=q.correctIndices.includes(bOi);
+      btn.className='cbtn'+(isCorr?(q.isMultiple?' on-multi':' on'):'');
+      btn.textContent=isCorr?'✓':'○';
+    });
+  }
+}
+function clearQs(){if(!questions.length)return;if(confirm('Очистити всі питання?')){questions=[];rebuildQs();toast('Видалено');}}
+
+// ══ PARSERS ══
+function buildAIPrompt(){
+  const topic=(el('aiTopic')?.value||'').trim();
+  const subj=(el('aiSubjectSel')?.value||'').trim();
+  const par=(el('aiParallelSel')?.value||'').trim();
+  const n=parseInt(el('aiQCount')?.value)||10;
+  const topicPart=topic?`"${topic}"`:'[вкажіть тему]';
+  const subjPart=subj?` з предмету "${subj}"`:'';
+  const clsPart=par?` для ${par}`:'';
+  return `Створи тест з ${n} питань${subjPart} на тему ${topicPart}${clsPart}.
+
+ВАЖЛИВО — формат спецсимволів:
+- Математичні символи: степені через Unicode (² ³ ⁴), дроби (½ ⅓ ¼), знаки (≤ ≥ ≠ ≈ √ ∞ π ∑ ∫).
+  Приклад: x² + y² = z², H₂SO₄, CO₂, t = 20°C
+- Хімічні формули: індекси як нижні Unicode (₂ ₃ ₄ ₅ ₆), стрілки (→ ⇌ ↑ ↓).
+  Приклад: H₂O, NaCl, CaCO₃ → CaO + CO₂↑
+- Одиниці вимірювання: м/с², кДж/моль, °C — звичайним текстом з Unicode.
+- НЕ використовуй HTML-теги, LaTeX або Markdown.
+
+Виводь ТІЛЬКИ питання і відповіді у форматі:
+
+?Текст питання
++Правильна відповідь
+-Неправильна відповідь
+-Неправильна відповідь
+
+?Питання [multiple] — кілька правильних
++Правильна 1
++Правильна 2
+-Неправильна
+
+? = питання, + = правильна, - = неправильна
+Без нумерації, вступу, пояснень.`;
+}
+
+function updateAIPrompt(){
+  const box=el('aiPromptBox');
+  if(box)box.textContent=buildAIPrompt();
+}
+
+function copyAIPrompt(){
+  const prompt=buildAIPrompt();
+  navigator.clipboard.writeText(prompt).then(()=>toast('📋 Промт скопійовано!')).catch(()=>toast('Скопіюйте вручну'));
+}
+
+function importAIText(){
+  const text=v('importAI');
+  if(!text.trim()){toast('Вставте відповідь ШІ');return;}
+  const parsed=parseAIText(text);
+  if(!parsed.length){el('importAIRes').innerHTML='<span style="color:var(--accent)">⚠️ Не вдалося розпізнати. Перевірте формат.</span>';return;}
+  parsed.forEach(q=>questions.push(q));
+  rebuildQs();
+  el('importAI').value='';
+  el('importAIRes').innerHTML='<span style="color:var(--green)">✅ Додано '+parsed.length+' питань</span>';
+  toast('Додано '+parsed.length+' питань');
+}
+
+function parseAIText(text){
+  const lines=text.split(/\r?\n/);
+  const found=[]; let cur=null;
+  for(let i=0;i<lines.length;i++){
+    const raw=lines[i]; const line=raw.trim();
+    if(!line)continue;
+
+    // === Format 1: ?/+/- (new universal format) ===
+    if(line.startsWith('?')){
+      if(cur&&cur.options.length>=2)found.push(finalizeQ(cur));
+      const qText=line.slice(1).trim();
+      const multi=qText.toLowerCase().includes('[multiple]')||qText.toLowerCase().includes('[кілька]');
+      const cleanText=qText.replace(/\s*\[multiple\]/gi,'').replace(/\s*\[кілька\]/gi,'').trim();
+      cur={text:cleanText,options:[],correctIndices:[],isMultiple:multi,points:1,imageUrl:null,optionImages:null};
+      continue;
+    }
+    if(cur){
+      if(line.startsWith('+')){cur.options.push(line.slice(1).trim());cur.correctIndices.push(cur.options.length-1);continue;}
+      if(line.startsWith('-')&&!line.startsWith('--')){cur.options.push(line.slice(1).trim());continue;}
+    }
+    // === Format 1b: ПИТАННЯ: / + word / - word ===
+    if(/^(ПИТАННЯ|ЗАПИТАННЯ|QUESTION)[:\s]/i.test(line)){
+      if(cur&&cur.options.length>=2)found.push(finalizeQ(cur));
+      const qText=line.replace(/^(ПИТАННЯ|ЗАПИТАННЯ|QUESTION)[:\s]*/i,'').trim();
+      const multi=qText.toLowerCase().includes('(multiple)')||qText.toLowerCase().includes('(кілька)');
+      cur={text:qText,options:[],correctIndices:[],isMultiple:multi,points:1,imageUrl:null,optionImages:null};
+      continue;
+    }
+    if(cur){
+      if(/^\+\s/.test(line)){cur.options.push(line.slice(1).trim());cur.correctIndices.push(cur.options.length-1);continue;}
+      if(/^\-\s/.test(line)){cur.options.push(line.slice(1).trim());continue;}
+    }
+
+    // === Format 2: № 1 / (правильний) ===
+    if(line.match(/^№\s*\d+/)){
+      if(cur&&cur.options.length>=2)found.push(finalizeQ(cur));
+      const multi=line.toLowerCase().includes('[multiple]')||line.toLowerCase().includes('(multiple)');
+      cur={text:'',options:[],correctIndices:[],isMultiple:multi,points:1,imageUrl:null,optionImages:null};
+      continue;
+    }
+    if(cur){
+      const isCorr=/\(правильний\)|\(вірний\)|\(correct\)|\*$/i.test(line);
+      const clean=line.replace(/\s*\(правильний\)|\s*\(вірний\)|\s*\(correct\)|\s*\*$/gi,'').trim();
+      if(!clean)continue;
+      if(cur.text===''){cur.text=clean;continue;}
+      cur.options.push(clean);
+      if(isCorr)cur.correctIndices.push(cur.options.length-1);
+    }
+  }
+  if(cur&&cur.options.length>=2)found.push(finalizeQ(cur));
+  return found;
+}
+function finalizeQ(q){
+  if(!q.correctIndices.length)q.correctIndices=[0];
+  if(!q.isMultiple&&q.correctIndices.length>1){q.isMultiple=true;}
+  while(q.options.length<4)q.options.push('');
+  return q;
+}
+function importText(){
+  const text=v('importText');
+  if(!text.trim()){toast('Вставте текст');return;}
+  const parsed=parseNaurokText(text);
+  if(!parsed.length){el('importTxtRes').innerHTML='<span style="color:var(--accent)">⚠️ Не вдалося розпізнати</span>';return;}
+  parsed.forEach(q=>questions.push(q)); rebuildQs();
+  el('importText').value='';
+  el('importTxtRes').innerHTML='<span style="color:var(--green)">✅ Додано '+parsed.length+'</span>';
+  toast('Додано '+parsed.length+' питань');
+}
+function parseNaurokText(text){
+  const lines=text.split(/\r?\n/); const found=[]; let cur=null;
+  const skip=/^(Додати|Знайти|Редагувати|Тест |На Урок|запитань|загальнодоступний|Хімія\s*$|Біологія\s*$|Фізика\s*$|клас\s*$)/i;
+  for(let i=0;i<Math.min(lines.length,6);i++){const l=lines[i].trim();if(l&&!l.match(/^№/)&&l.length>3&&l.length<120&&!l.match(/^\d+\s*запитань/i)){const tf=el('testTitle');if(tf&&(tf.value===''||tf.value==='Мій тест')){tf.value=l;break;}}}
+  for(const raw of lines){
+    const line=raw.trim();
+    if(line.match(/^№\s*\d+/)){if(cur&&cur.options.length>=2)found.push(cur);const pm=line.match(/№\s*\d+\s+(\d+(?:\.\d+)?)\s*бали?в?/);const multi=line.toLowerCase().includes('[multiple]');cur={text:'',options:[],correctIndices:[0],isMultiple:multi,points:pm?parseFloat(pm[1]):1,imageUrl:null,optionImages:null};continue;}
+    if(!cur||!line)continue;if(skip.test(line))continue;
+    if(line.match(/^[•\-☐◻□]/)){cur.options.push(line.replace(/^[•\-☐◻□]\s*/,'').trim());continue;}
+    if(cur.text===''){cur.text=line;continue;}
+    cur.options.push(line);
+  }
+  if(cur&&cur.options.length>=2)found.push(cur);
+  return found;
+}
+function importJson(){
+  const raw=v('importJson').trim();
+  if(!raw){toast('Вставте JSON');return;}
+  if(raw.length>2*1024*1024){el('importJsonRes').innerHTML='<span style="color:var(--accent)">❌ JSON занадто великий (макс. 2MB)</span>';return;}
+  let data;try{data=JSON.parse(raw);}catch{el('importJsonRes').innerHTML='<span style="color:var(--accent)">❌ Невалідний JSON</span>';return;}
+  let qs=[];
+  // Naurok format
+  if(data.document||data.questions){
+    const doc=data.document||{};
+    if(doc.name){const tf=el('testTitle');if(tf&&(tf.value===''||tf.value==='Мій тест'))tf.value=doc.name;}
+    if(doc.subject_id&&data.subjects){const s=data.subjects.find(x=>+x.id===+doc.subject_id);if(s){const sf=el('testSubject');if(sf)sf.value=s.name;}}
+    if(doc.grade_id&&data.grades){const g=data.grades.find(x=>+x.id===+doc.grade_id);if(g){const cf=el('testClass');if(cf)cf.value=g.name;}}
+    qs=(data.questions||[]).map(q=>{
+      const txt=stripHtml(q.content||q.text||'');
+      const opts=(q.options||[]).map(o=>({txt:stripHtml(o.value||o.text||''),img:o.image||null,ok:+o.correct===1||o.correct===true}));
+      const ci=opts.reduce((a,o,i)=>{if(o.ok)a.push(i);return a;},[]);
+      return{text:txt,imageUrl:q.image||null,options:opts.map(o=>o.txt),optionImages:opts.map(o=>o.img),correctIndices:ci.length?ci:[0],isMultiple:q.type==='multiquiz'||ci.length>1,points:1};
+    }).filter(q=>q.text&&q.options.length>=2);
+  } else if(Array.isArray(data)){
+    qs=data.map(normQ).filter(q=>q.text&&q.options.length>=2);
+  } else if(data.questions){
+    qs=(data.questions||[]).map(normQ).filter(q=>q.text&&q.options.length>=2);
+  }
+  if(!qs.length){el('importJsonRes').innerHTML='<span style="color:var(--accent)">⚠️ Питань не знайдено</span>';return;}
+  qs.forEach(q=>questions.push(q)); rebuildQs();
+  el('importJson').value='';
+  el('importJsonRes').innerHTML='<span style="color:var(--green)">✅ Імпортовано '+qs.length+'</span>';
+  toast('Імпортовано '+qs.length+' питань');
+}
+function normQ(q){return{text:stripHtml(q.text||q.content||q.question||''),options:(q.options||[]).map(o=>typeof o==='string'?o:stripHtml(o.text||o.value||'')),optionImages:(q.options||[]).map(o=>typeof o==='string'?null:(o.image||null)),correctIndices:Array.isArray(q.correctIndices)?q.correctIndices:[q.correct||0],isMultiple:!!(q.isMultiple||q.type==='multiquiz'),points:parseFloat(q.points||q.point||1),imageUrl:q.imageUrl||q.image||null};}
+function stripHtml(s){if(!s)return'';const d=document.createElement('div');d.innerHTML=s;return(d.textContent||d.innerText||'').trim();}
+
+// ══ CLASS COLORS (by parallel number — distinct, vivid) ══
+// Parallel 1→12, each with unique vivid color
+const PARALLEL_COLORS={
+  '1':'#06b6d4','2':'#8b5cf6','3':'#64748b','4':'#f43f5e',
+  '5':'#ec4899','6':'#dc2626','7':'#16a34a','8':'#ca8a04',
+  '9':'#ea580c','10':'#2563eb','11':'#7c3aed','12':'#0d9488'
+};
+// 5→рожевий, 6→червоний, 7→зелений, 8→жовтий, 9→оранжевий, 10→синій, 11→фіолетовий, 12→бірюзовий
+function getParallel(cls){
+  if(!cls)return'';
+  const m=String(cls).match(/^(\d+)/);
+  return m?m[1]:'';
+}
+function getClsLetter(cls){
+  if(!cls)return'';
+  const m=String(cls).match(/[\s\-–—]?([А-ЯҐЄІЇа-яґєіїА-яA-Za-z])$/u);
+  return m?m[1]:'';
+}
+function clsColor(cls){
+  const p=getParallel(cls);
+  return PARALLEL_COLORS[p]||'#64748b';
+}
+// For LIBRARY icons: show only parallel number
+function libIconContent(cls){
+  const p=getParallel(cls);
+  return p||'📋';
+}
+// For RESULTS icons: show parallel + letter (e.g. "10А", "7Б")
+function resIconContent(cls){
+  const p=getParallel(cls);
+  const l=getClsLetter(cls);
+  return{digit:p,letter:l};
+}
+
+// ══ GRADES ══
+const DEF_MOTTOS_12=['Ти топ! Так тримати 🔥','Ти топ! Так тримати 🔥','Ти топ! Так тримати 🔥','Ще трохи — і будеш у топі 🚀','Ще трохи — і будеш у топі 🚀','Ще трохи — і будеш у топі 🚀','Ще трохи — і будеш у топі 🚀','Набираєш обертів! Не зупиняйся 💪','Набираєш обертів! Не зупиняйся 💪','Старт є — далі тільки вгору 📈','Старт є — далі тільки вгору 📈','Старт є — далі тільки вгору 📈'];
+const DEF_MOTTOS_10=['Ти топ! Так тримати 🔥','Ти топ! Так тримати 🔥','Ти топ! Так тримати 🔥','Ще трохи — і будеш у топі 🚀','Ще трохи — і будеш у топі 🚀','Набираєш обертів! Не зупиняйся 💪','Набираєш обертів! Не зупиняйся 💪','Старт є — далі тільки вгору 📈','Старт є — далі тільки вгору 📈','Старт є — далі тільки вгору 📈'];
+const GP={
+  12:[{l:'12',m:97,c:'#15803d',motto:''},{l:'11',m:90,c:'#16a34a',motto:''},{l:'10',m:82,c:'#1d4ed8',motto:''},{l:'9',m:74,c:'#2563eb',motto:''},{l:'8',m:66,c:'#4f46e5',motto:''},{l:'7',m:58,c:'#d97706',motto:''},{l:'6',m:50,c:'#f59e0b',motto:''},{l:'5',m:40,c:'#ea580c',motto:''},{l:'4',m:30,c:'#dc2626',motto:''},{l:'3',m:20,c:'#b91c1c',motto:''},{l:'2',m:10,c:'#991b1b',motto:''},{l:'1',m:0,c:'#7f1d1d',motto:''}],
+  10:[{l:'10',m:90,c:'#15803d',motto:''},{l:'9',m:80,c:'#16a34a',motto:''},{l:'8',m:70,c:'#1d4ed8',motto:''},{l:'7',m:60,c:'#2563eb',motto:''},{l:'6',m:50,c:'#d97706',motto:''},{l:'5',m:40,c:'#ea580c',motto:''},{l:'4',m:30,c:'#dc2626',motto:''},{l:'3',m:20,c:'#b91c1c',motto:''},{l:'2',m:10,c:'#991b1b',motto:''},{l:'1',m:0,c:'#7f1d1d',motto:''}]
+};
+function getGrades(){return GP[v('gradeSystem')||'12']||GP[12];}
+function gradeByPct(pct){const g=getGrades();for(const x of g){if(pct>=x.m)return x;}return g[g.length-1];}
+function renderGrades(){
+  const sys=v('gradeSystem')||'12';const grades=GP[sys];
+  el('gradeEditor').innerHTML=`<div style="display:grid;grid-template-columns:44px 1fr 62px 28px 1fr;gap:5px;font-size:.6rem;color:rgba(26,26,46,.38);font-weight:700;text-transform:uppercase;padding-bottom:4px;"><span>Оцінка</span><span></span><span>Від %</span><span>Колір</span><span>Гасло</span></div>`+
+    grades.map((g,i)=>{
+      const defM=(sys==='12'?DEF_MOTTOS_12:DEF_MOTTOS_10)[i]||'';
+      return`<div style="display:grid;grid-template-columns:44px 1fr 62px 28px 1fr;gap:5px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+        <span class="gchip" style="background:${g.c};width:40px;height:36px;font-size:.9rem;">${g.l}</span>
+        <span></span>
+        <input type="number" value="${g.m}" min="0" max="100" style="font-size:.76rem;padding:4px 6px;" oninput="GP['${sys}'][${i}].m=+this.value;renderGradePreview();autoSaveGrades()">
+        <input type="color" value="${g.c}" style="width:26px;height:26px;border:none;background:none;cursor:pointer;border-radius:4px;" oninput="GP['${sys}'][${i}].c=this.value;renderGradePreview();autoSaveGrades()">
+        <input type="text" value="${g.motto||defM}" placeholder="${defM}" style="font-size:.72rem;padding:4px 7px;" oninput="GP['${sys}'][${i}].motto=this.value;autoSaveGrades()">
+      </div>`;
+    }).join('');
+  renderGradePreview();
+}
+let _gradeSaveTimer=null;
+function autoSaveGrades(){clearTimeout(_gradeSaveTimer);_gradeSaveTimer=setTimeout(saveGradeSettings,1500);}
+function renderGradePreview(){
+  el('gradePreview').innerHTML=getGrades().map(g=>`<div style="display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px solid var(--border);"><span class="gchip" style="background:${g.c};width:38px;height:34px;font-size:.9rem;">${g.l}</span><span class="text-mono text-sm">≥${g.m}%</span>${g.motto?`<span style="font-size:.7rem;color:rgba(26,26,46,.45);margin-left:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;" title="${g.motto}">${g.motto}</span>`:''}</div>`).join('');
+}
+function saveGradeSettings(){
+  // Save GP to localStorage and Firebase
+  const sys=v('gradeSystem')||'12';
+  localStorage.setItem('sqpro_grades_'+sys, JSON.stringify(GP[sys]));
+  if(db) db.ref('config/grades_'+sys).set(GP[sys]).catch(()=>{});
+  toast('🎓 Оцінки збережено');
+}
+function loadGradeSettings(){
+  ['12','10'].forEach(sys=>{
+    // Try Firebase first
+    if(db){
+      db.ref('config/grades_'+sys).once('value',snap=>{
+        const fb=snap.val();
+        if(Array.isArray(fb)&&fb.length>0){
+          GP[sys]=fb;
+          if(v('gradeSystem')===sys){renderGrades();}
+        }
+      });
+    }
+    // Fallback localStorage
+    try{
+      const saved=JSON.parse(localStorage.getItem('sqpro_grades_'+sys));
+      if(Array.isArray(saved)&&saved.length>0&&!db) GP[sys]=saved;
+    }catch{}
+  });
+}
+function renderCreatorPanel(){
+  const checks=['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle'];
+  const labels={'s-tab':'Вкладки','s-blur':'Розмиття','s-ctx':'Кліки','s-copy':'Копіювання','s-prtsc':'PrtSc','s-wm':'Вод.знак','s-shuffle':'Перемішати'};
+  const sp=el('crSec');
+  if(sp)sp.innerHTML='<div style="display:flex;gap:4px;flex-wrap:wrap;">'+checks.filter(id=>getSec(id)).map(id=>`<span style="background:rgba(37,99,235,.1);color:var(--blue);padding:2px 6px;border-radius:4px;font-size:.66rem;font-weight:700;">${labels[id]}</span>`).join('')+'</div>';
+}
+
+// ══ LIBRARY ══
+// ── LIBRARY (Firebase + localStorage fallback) ──
+let _libCache=[];
+
+function getLib(){return _libCache;}
+
+function setLib(arr){
+  _libCache=arr;
+  // Always save to localStorage as fallback
+  localStorage.setItem('sqpro_lib',JSON.stringify(arr));
+  // Save to Firebase if available
+  if(db){
+    const obj={};
+    arr.forEach((t,i)=>{obj['t_'+i+'_'+(t.id||i)]=t;});
+    db.ref('library').set(obj).catch(()=>{});
+  }
+}
+
+function syncLibrary(){
+  // Try Firebase first
+  if(db){
+    db.ref('library').on('value',snap=>{
+      const data=snap.val()||{};
+      const arr=Object.values(data).sort((a,b)=>(b.id||0)-(a.id||0));
+      if(arr.length>0){
+        _libCache=arr;
+        localStorage.setItem('sqpro_lib',JSON.stringify(arr));
+      } else {
+        // Try localStorage
+        try{_libCache=JSON.parse(localStorage.getItem('sqpro_lib')||'[]');}catch{_libCache=[];}
+        // If localStorage has data, push it to Firebase
+        if(_libCache.length>0) setLib(_libCache);
+      }
+      updateLibFilters(); renderLib(); renderDash();
+    });
+  } else {
+    // Firebase not configured — use localStorage only
+    try{_libCache=JSON.parse(localStorage.getItem('sqpro_lib')||'[]');}catch{_libCache=[];}
+    updateLibFilters(); renderLib(); renderDash();
+  }
+}
+
+function saveToLib(){
+  if(!questions.length){toast('⚠️ Немає питань');return;}
+  if(questions.length>200){toast('⚠️ Максимум 200 питань у тесті');return;}
+  if(_libCache.length>=200){toast('⚠️ Бібліотека переповнена (макс. 200 тестів). Видаліть старі.');return;}
+  const title=v('testTitle')||'Тест',time=parseInt(v('testTime'))||15,subject=v('testSubject')||'',cls=v('testClass')||'';
+  const lib=[..._libCache];
+  const ex=lib.findIndex(t=>t.title===title);
+  const entry={id:Date.now(),title,time,subject,cls,questions:JSON.parse(JSON.stringify(questions)),created:new Date().toLocaleDateString('uk-UA')};
+  if(ex>=0){if(!confirm('Перезаписати "'+title+'"?'))return;lib[ex]=entry;}else lib.unshift(entry);
+  setLib(lib); toast('💾 "'+title+'" збережено');
+}
+
+function updateLibFilters(){
+  const lib=_libCache;
+  const subs=[...new Set(lib.map(t=>t.subject).filter(Boolean))];
+  const cls=[...new Set(lib.map(t=>t.cls).filter(Boolean))];
+  const sf=el('libFS'),cf=el('libFC');
+  if(sf){const v2=sf.value;sf.innerHTML='<option value="">Всі предмети</option>'+subs.map(s=>`<option value="${s}">${s}</option>`).join('');sf.value=v2;}
+  if(cf){const v2=cf.value;cf.innerHTML='<option value="">Всі класи</option>'+cls.map(s=>`<option value="${s}">${s}</option>`).join('');cf.value=v2;}
+}
+
+function renderLib(){
+  const lib=_libCache, elL=el('libList');if(!elL)return;
+  const fs=el('libFS')?.value||'',fc=el('libFC')?.value||'';
+  const sq=(el('libSearch')?.value||'').toLowerCase().trim();
+  const filtered=lib.filter(t=>{
+    if(fs&&t.subject!==fs)return false;
+    if(fc&&t.cls!==fc)return false;
+    if(sq&&!t.title.toLowerCase().includes(sq)&&!(t.subject||'').toLowerCase().includes(sq))return false;
+    return true;
+  });
+  if(!filtered.length){elL.innerHTML='<div class="empty-state"><div class="esi">📚</div><p>Тестів не знайдено.</p></div>';return;}
+  const bySub={};
+  filtered.forEach(t=>{const k=t.subject||'Без предмету';if(!bySub[k])bySub[k]=[];bySub[k].push(t);});
+  elL.innerHTML=Object.entries(bySub).map(([sub,tests])=>`
+    <div style="margin-bottom:16px;">
+      <div class="lib-cat-title">📖 ${sub}</div>
+      ${tests.map(t=>{
+        const gi=lib.indexOf(t);
+        const cc=clsColor(t.cls); const libNum=t.cls?libIconContent(t.cls):'📋';
+        return`<div class="lib-card">
+          <div class="lib-icon" style="background:${cc};font-size:${typeof libNum==='string'&&libNum.length>2?'.9rem':'1.1rem'};">${libNum}</div>
+          <div class="lib-info">
+            <div class="lib-title">${t.title}</div>
+            <div class="lib-meta">${t.questions.length} пит. · ${t.time} хв · ${t.created}</div>
+            <div class="lib-tags">
+              ${t.cls?`<span class="lib-tag lib-tag-cls" style="background:${cc};">${t.cls}</span>`:''}
+              ${t.subject?`<span class="lib-tag lib-tag-sub">${t.subject}</span>`:''}
+            </div>
+          </div>
+          <div class="lib-actions">
+            <button class="btn btn-outline btn-sm" onclick="loadLib(${gi})" title="Редагувати">✏️</button>
+            <button class="btn btn-red btn-sm" onclick="runLib(${gi})" title="Запустити">▶</button>
+            <button class="btn btn-outline btn-sm" onclick="exportTestJSON(${gi})" title="JSON">⬇JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="exportTestPDF(${gi})" title="PDF" style="color:#dc2626;border-color:rgba(220,38,38,.3);">📄</button>
+            <button class="btn btn-danger btn-sm" onclick="delLib(${gi})" title="Видалити">🗑</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+function loadLib(i){
+  const t=_libCache[i];
+  if(!t)return;
+  questions=JSON.parse(JSON.stringify(t.questions||[]));
+  el('testTitle').value=t.title;
+  el('testTime').value=t.time;
+  if(el('testSubject'))el('testSubject').value=t.subject||'';
+  if(el('testClass'))el('testClass').value=t.cls||'';
+  rebuildQs(); navTo('creator'); toast('Завантажено: "'+t.title+'"');
+}
+function runLib(i){loadLib(i);openLaunchDialog();}
+function delLib(i){
+  const lib=[..._libCache];
+  if(!confirm('Видалити "'+lib[i].title+'"?'))return;
+  lib.splice(i,1); setLib(lib); toast('Видалено');
+}
+
+function exportTestJSON(i){
+  const t=_libCache[i];
+  if(!t){toast('Помилка');return;}
+  const data={title:t.title,subject:t.subject||'',cls:t.cls||'',time:t.time,questions:t.questions};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(t.title||'test').replace(/[^а-яА-ЯҐЄІЇa-zA-Z0-9]/g,'_')+'.json';
+  a.click();
+  toast('📥 Тест експортовано як JSON');
+}
+
+// ══ КРИПТО — AES-GCM 256 ══
+// Питання шифруються перед збереженням у Firebase.
+// Ключ передається ТІЛЬКИ в URL учню — в базі його немає.
+async function _aesKey(raw){
+  const seed=new Uint8Array(32);
+  seed.set(new TextEncoder().encode(raw).slice(0,32));
+  return crypto.subtle.importKey('raw',seed,{name:'AES-GCM'},false,['encrypt','decrypt']);
+}
+async function encryptForSession(obj,keyRaw){
+  const key=await _aesKey(keyRaw);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const cipher=await crypto.subtle.encrypt(
+    {name:'AES-GCM',iv},key,
+    new TextEncoder().encode(JSON.stringify(obj))
+  );
+  return{iv:btoa(String.fromCharCode(...iv)),d:btoa(String.fromCharCode(...new Uint8Array(cipher)))};
+}
+
+// ══ LAUNCH ══
+let activeSessionId=null;
+
+// Step 1: open dialog — teacher selects class
+function openLaunchDialog(){
+  if(!questions.length){toast('⚠️ Немає питань');return;}
+  // Reset to step1
+  el('launchStep1').style.display='block';
+  el('launchStep2').style.display='none';
+  el('stopSessionBtn').style.display='none';
+  el('launchStatus').textContent='';
+  // Populate class dropdown
+  updateLaunchClassDropdown();
+  el('launchModal').classList.add('show');
+}
+
+// Step 2: teacher clicked "Зафіксувати клас і запустити"
+function confirmLaunchClass(){
+  const chosenClass=v('launchClassSelect')||'';
+  // Show badge
+  const badge=el('launchClassBadgeText');
+  if(badge) badge.textContent=chosenClass||'— не вказано —';
+
+  // Hide step1, show step2
+  el('launchStep1').style.display='none';
+  el('launchStep2').style.display='block';
+
+  // Now actually launch
+  _doLaunch(chosenClass);
+}
+
+async function _doLaunch(launchClass){
+  const sessionId='sess_'+crypto.randomUUID().replace(/-/g,'');
+  const timerMode=v('timerMode')||'total';
+  const testTime=parseInt(v('testTime'))||15;
+  const autoStop=getSec('finishOnTime');
+  const startedAt=new Date();
+  const stopAt=autoStop?new Date(startedAt.getTime()+(testTime+5)*60000):null;
+
+  // Генеруємо ключ шифрування — 32 випадкові символи
+  // Він буде ТІЛЬКИ в URL учня і в пам'яті вчителя, але НЕ в Firebase
+  const encKey=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
+
+  // Шифруємо питання (включно з correctIndices)
+  let encQ=null;
+  try{
+    encQ=await encryptForSession(JSON.parse(JSON.stringify(questions)),encKey);
+  }catch(e){
+    toast('⚠️ Помилка шифрування: '+e.message);return;
+  }
+
+  const payload={
+    sessionId,
+    title:v('testTitle')||'Тест',
+    time:testTime,
+    timePerQ:parseInt(v('testTimePerQ'))||30,
+    timerMode,
+    subject:v('testSubject')||'',
+    cls:v('testClass')||'',
+    launchClass:launchClass,
+    // questions НЕ зберігаємо відкрито — тільки зашифровані
+    encQ,                              // зашифровані питання
+    secSettings:{tab:getSec('s-tab'),blur:getSec('s-blur'),ctx:getSec('s-ctx'),copy:getSec('s-copy'),prtsc:getSec('s-prtsc'),wm:getSec('s-wm'),shuffle:getSec('s-shuffle'),maxviol:getSecVal('s-maxviol')},
+    grades:getGrades().map(g=>({...g})),
+    finishOnAll:false,
+    finishOnTime:autoStop,
+    stopAt:stopAt?stopAt.toISOString():null,
+    startedAt:startedAt.toISOString(),
+    status:'active'
+  };
+
+  // Save to Firebase
+  if(db){
+    db.ref('sessions/'+sessionId).set(payload);
+    activeSessionId=sessionId;
+    el('stopSessionBtn').style.display='block';
+    startListeningActiveSessions();
+    if(payload.finishOnAll){listenForCompletion(sessionId,payload);}
+  } else {
+    // Fallback localStorage — зберігаємо з незашифрованими питаннями для локального тесту
+    const localPayload={...payload,questions:JSON.parse(JSON.stringify(questions))};
+    localStorage.setItem('sqpro_exam_payload',JSON.stringify(localPayload));
+    el('stopSessionBtn').style.display='none';
+  }
+
+  // Build exam URL — ключ шифрування йде в URL параметр &k=
+  const baseUrl=typeof APP_URL!=='undefined'?APP_URL:(window.location.href.replace(/[^/]*$/, ''));
+  const examUrl=baseUrl+'exam.html?session='+sessionId+'&k='+encKey;
+  el('examLink').value=examUrl;
+
+  // QR
+  const qrDiv=el('qrWrap'); qrDiv.innerHTML='';
+  try{new QRCode(qrDiv,{text:examUrl,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});}
+  catch(e){qrDiv.innerHTML='<div style="font-size:.78rem;color:rgba(26,26,46,.4);">QR-код недоступний</div>';}
+
+  el('launchStatus').textContent='✅ Тест запущено. Надішліть посилання учням.';
+
+  if(payload.stopAt){
+    const stopTime=new Date(payload.stopAt);
+    const hh=String(stopTime.getHours()).padStart(2,'0');
+    const mm=String(stopTime.getMinutes()).padStart(2,'0');
+    const autoDiv=el('launchAutoStop'),stopTimeEl=el('launchStopTime');
+    if(autoDiv)autoDiv.style.display='block';
+    if(stopTimeEl)stopTimeEl.textContent=hh+':'+mm;
+    const msUntilStop=stopTime.getTime()-Date.now();
+    if(msUntilStop>0&&db){
+      setTimeout(()=>{
+        db.ref('sessions/'+sessionId+'/status').set('stopped');
+        toast('⏰ Час вийшов — тест автоматично зупинено');
+      },msUntilStop);
+    }
+  } else {
+    const autoDiv=el('launchAutoStop');
+    if(autoDiv)autoDiv.style.display='none';
+  }
+  navTo('active');
+}
+
+function copyLink(){
+  const link=el('examLink').value;
+  navigator.clipboard.writeText(link).then(()=>toast('📋 Посилання скопійовано!')).catch(()=>{el('examLink').select();document.execCommand('copy');toast('📋 Скопійовано');});
+}
+
+function stopActiveSession(){
+  if(!activeSessionId||!db)return;
+  db.ref('sessions/'+activeSessionId+'/status').set('stopped');
+  el('stopSessionBtn').style.display='none';
+  el('launchStatus').textContent='⏹ Тест зупинено';
+  activeSessionId=null;
+  renderActiveSessions();
+  toast('Тест зупинено');
+}
+
+function listenForCompletion(sessionId,payload){
+  if(!db)return;
+  const ref=db.ref('sessions/'+sessionId+'/participants');
+  ref.on('value',snap=>{
+    const parts=snap.val()||{};
+    const done=Object.values(parts).filter(p=>p.status==='done').length;
+    const total=Object.keys(parts).length;
+    if(total>0&&done>=total){
+      db.ref('sessions/'+sessionId+'/status').set('stopped');
+      ref.off();
+      toast('✅ Всі учні завершили тест');
+    }
+  });
+}
+
+// ══ LIVE MONITORING ══
+function startListeningActiveSessions(){
+  if(!db)return;
+  // ══ Автоматичне закриття сесій старших за 24 години ══
+  db.ref('sessions').once('value',snap=>{
+    const all=snap.val()||{};
+    const cutoff=Date.now()-24*60*60*1000;
+    Object.entries(all).forEach(([sid,s])=>{
+      if(s.status==='active'&&s.startedAt&&new Date(s.startedAt).getTime()<cutoff){
+        db.ref('sessions/'+sid+'/status').set('expired');
+      }
+    });
+  });
+  db.ref('sessions').on('value',snap=>{
+    const all=snap.val()||{};
+    const count=Object.values(all).filter(s=>s.status==='active').length;
+    const badge=el('activeBadge');
+    badge.textContent=count;
+    badge.style.display=count>0?'inline':'none';
+    el('dActive').textContent=count;
+    if(document.querySelector('[data-page="active"].active'))renderActiveSessionsFromSnap(all);
+  });
+}
+
+let _lastActiveSnap={};
+function renderActiveSessions(){
+  const container=el('activeList');if(!container)return;
+  if(!db){container.innerHTML='<div class="firebase-notice">⚠️ Firebase не налаштовано</div>';return;}
+  db.ref('sessions').once('value',snap=>{
+    _lastActiveSnap=snap.val()||{};
+    renderActiveSessionsFromSnap(_lastActiveSnap);
+  });
+}
+
+function renderActiveSessionsFromSnap(sessions){
+  const container=el('activeList');if(!container)return;
+  // Preserve open state of detail panels
+  const openSids=new Set();
+  container.querySelectorAll('.live-detail.open').forEach(d=>openSids.add(d.id));
+  // Show: active + stopped + completed (all visible, can delete stopped/completed)
+  // Show: active always; stopped/completed only if manually clicked to keep visible
+  const all=Object.entries(sessions)
+    .filter(([,s])=>s.status==='active')
+    .sort((a,b)=>(b[1].startedAt||'').localeCompare(a[1].startedAt||''));
+  if(!all.length){container.innerHTML='<div class="empty-state"><div class="esi">🟢</div><p>Активних тестів немає.<br>Завершені автоматично перейшли в Результати.</p></div>';return;}
+  container.innerHTML=all.map(([sid,s])=>{
+    const parts=s.participants||{};
+    const total=Object.keys(parts).length;
+    const done=Object.values(parts).filter(p=>p.status==='done').length;
+    const inProgress=total-done;
+    const avgPct=done>0?Math.round(Object.values(parts).filter(p=>p.pct!==undefined).reduce((a,p)=>a+p.pct,0)/done):0;
+    const grade=gradeByPct(avgPct);
+    const isActive=s.status==='active';
+    const isStopped=false;
+    const statusDot='<div class="live-dot"></div>';
+    const statusLabel='🟢 Активний';
+    return`<div class="session-live">
+      <div class="session-live-header" onclick="toggleActiveDetail('${sid}')">
+        ${statusDot}
+        <div class="live-info">
+          <div class="live-title">${s.title||'Тест'}${s.cls?' · '+s.cls:''}</div>
+          <div class="live-meta">${s.subject||''} · ${s.startedAt?new Date(s.startedAt).toLocaleString('uk-UA'):''} · ${statusLabel}</div>
+        </div>
+        <div class="live-stats">
+          <div class="live-stat"><div class="live-stat-val" style="color:var(--green)">${done}</div><div class="live-stat-lbl">Здали</div></div>
+          <div class="live-stat"><div class="live-stat-val" style="color:var(--blue)">${inProgress}</div><div class="live-stat-lbl">В процесі</div></div>
+          <div class="live-stat"><div class="live-stat-val">${total}</div><div class="live-stat-lbl">Всього</div></div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0;">
+          ${isActive?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();stopSession('${sid}')">⏹ Стоп</button>`:''}
+          <button class="btn btn-outline btn-sm" style="color:var(--accent);" onclick="event.stopPropagation();deleteSession('${sid}')" title="Видалити з активних">🗑</button>
+        </div>
+      </div>
+      <div class="live-detail" id="ld-${sid}">
+        <div style="padding:12px 16px 8px;font-size:.75rem;font-weight:700;color:rgba(26,26,46,.4);text-transform:uppercase;">Прогрес учнів</div>
+        <div class="progress-grid" style="padding:0 16px 14px;">
+          ${Object.entries(parts).map(([uid,p])=>{
+            const pct=p.current&&p.total?Math.round(p.current/p.total*100):0;
+            const isDone=p.status==='done';
+            return`<div class="student-progress">
+              <div class="sp-name">${p.name||'Учень'}</div>
+              <div class="sp-bar-wrap"><div class="sp-bar" style="width:${isDone?100:pct}%;background:${isDone?'var(--green)':'var(--blue)'}"></div></div>
+              <div class="sp-status">${isDone?'✅ Завершив ('+p.pct+'%)':(p.current?`Q${p.current}/${p.total}`:'Очікує')}</div>
+            </div>`;
+          }).join('')||'<div class="text-sm" style="padding:0 0 8px;">Учні ще не приєдналися</div>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleActiveDetail(sid){el('ld-'+sid)?.classList.toggle('open');}
+
+function stopSession(sid){
+  if(!db||!currentUser)return;
+  if(typeof sid!=='string'||!/^sess_[a-f0-9]+$/.test(sid)){toast('⚠️ Невалідний ID сесії');return;}
+  if(!confirm('Зупинити тест для всіх учнів?'))return;
+  db.ref('sessions/'+sid+'/status').set('stopped');
+  toast('Тест зупинено для всіх учнів');
+}
+
+function deleteSession(sid){
+  if(!db||!currentUser)return;
+  if(!confirm('Видалити цей тест з активних? Результати учнів залишаться.'))return;
+  // Перевіряємо що sid — валідний рядок (не ін'єкція)
+  if(typeof sid!=='string'||!/^sess_[a-f0-9]+$/.test(sid)){toast('⚠️ Невалідний ID сесії');return;}
+  db.ref('sessions/'+sid).remove();
+  toast('Тест видалено з активних');
+}
+
+// ══ RESULTS — читаємо з Firebase ══
+// ── RESULTS with Firebase sync ──
+let _resultsCache=[];
+
+function getResults(){return _resultsCache;}
+
+let _sessionMetaCache={};  // sessionId → {launchClass, title, subject, cls}
+
+function syncResultsFromFirebase(){
+  if(!db)return;
+  // Also sync session metadata (for launchClass)
+  db.ref('sessions').once('value',snap=>{
+    const sess=snap.val()||{};
+    Object.entries(sess).forEach(([sid,s])=>{
+      _sessionMetaCache[sid]={
+        launchClass:s.launchClass||'',
+        title:s.title||'',
+        subject:s.subject||'',
+        cls:s.cls||''
+      };
+    });
+  });
+  db.ref('results').on('value',snap=>{
+    const fbRes=snap.val()||{};
+    _resultsCache=Object.entries(fbRes)
+      .map(([k,v])=>({...v,_fbKey:k}))
+      .sort((a,b)=>(b.ts||0)-(a.ts||0));
+    localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache.slice(0,500)));
+    renderResultsPage(); updateResFilter(); renderDash();
+  });
+}
+
+function clearResults(){
+  if(!currentUser){toast('⚠️ Необхідна авторизація');return;}
+  if(!confirm('Очистити ВСІ результати? Дія незворотна.'))return;
+  // Подвійне підтвердження для критичної операції
+  if(!confirm('ОСТАТОЧНЕ ПІДТВЕРДЖЕННЯ: видалити всі результати?'))return;
+  _resultsCache=[];
+  localStorage.removeItem('sqpro_results');
+  if(db){
+    db.ref('results').remove().then(()=>toast('Всі результати видалено'));
+  } else {
+    toast('Всі результати видалено');
+  }
+  renderResultsPage(); updateResFilter(); renderDash();
+}
+
+function clearSessionResults(sessionId){
+  if(!confirm('Видалити всі результати цієї сесії?'))return;
+  const toDelete=_resultsCache.filter(r=>(r.sessionId||r.test||'?')===sessionId);
+  if(db){
+    // Remove from Firebase — other devices get update via onValue listener
+    const removes=toDelete.filter(r=>r._fbKey).map(r=>db.ref('results/'+r._fbKey).remove());
+    Promise.all(removes).then(()=>toast('Результати сесії видалено'));
+  } else {
+    toast('Результати сесії видалено');
+  }
+  // Update local cache immediately (Firebase listener will confirm)
+  _resultsCache=_resultsCache.filter(r=>(r.sessionId||r.test||'?')!==sessionId);
+  localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache));
+  renderResultsPage(); updateResFilter(); renderDash();
+}
+function updateResFilter(){
+  const rs=getResults();
+  const tests=[...new Set(rs.map(r=>r.test).filter(Boolean))];
+  const rf=el('resFilter');if(rf){const v2=rf.value;rf.innerHTML='<option value="">Всі тести</option>'+tests.map(t=>`<option value="${t}">${t}</option>`).join('');rf.value=v2;}
+  updateResClassFilter();
+}
+function renderResultsPage(){
+  let rs=getResults();
+  const ft=el('resFilter')?.value||'';
+  const fc=el('resClassFilter')?.value||'';
+  if(ft)rs=rs.filter(r=>r.test===ft);
+  if(fc)rs=rs.filter(r=>r.cls===fc);
+  // Exclude sessions already moved to archive
+  const st=getJournalState();
+  const container=el('sessionList');if(!container)return;
+  // Preserve open sessions
+  const openSids=new Set();
+  container.querySelectorAll('.res-detail.open').forEach(d=>openSids.add(d.id));
+  if(!rs.length){container.innerHTML='<div class="empty-state"><div class="esi">📊</div><p>Немає результатів.</p></div>';return;}
+  const sessions={};
+  rs.forEach((r,i)=>{
+    const k=r.sessionId||r.test||'?';
+    // Skip sessions moved to archive
+    if(st[k])return;
+    // _sessionMetaCache has the true launchClass from Firebase session
+    const meta=_sessionMetaCache[k]||{};
+    if(!sessions[k])sessions[k]={
+      title:meta.title||r.test,
+      cls:meta.launchClass||r.launchClass||r.cls||'',
+      launchClass:meta.launchClass||r.launchClass||'',
+      subject:meta.subject||r.subject||'',
+      startedAt:r.startedAt||r.date,
+      records:[]
+    };
+    // Firebase session meta always wins
+    if(meta.launchClass){sessions[k].cls=meta.launchClass;sessions[k].launchClass=meta.launchClass;}
+    const cacheIdx=_resultsCache.findIndex(x=>x===r||(x._fbKey&&x._fbKey===r._fbKey)||(x.ts&&x.ts===r.ts&&x.student===r.student));
+    sessions[k].records.push({...r,_ri:cacheIdx>=0?cacheIdx:i});
+  });
+  const sessionEntries=Object.entries(sessions);
+  if(!sessionEntries.length){container.innerHTML='<div class="empty-state"><div class="esi">📊</div><p>Немає результатів.</p></div>';return;}
+  container.innerHTML=sessionEntries.map(([sid,s])=>{
+    s.records=sortByGlobal(s.records);
+    const avgPct=Math.round(s.records.reduce((a,r)=>a+r.pct,0)/s.records.length);
+    const grade=gradeByPct(avgPct);
+    const cc=clsColor(s.cls);
+    // Split class into number and letter parts for two-line icon
+    // Parse class: "10-А" → {digit:"10", letter:"А"}, "7 клас" → {digit:"7", letter:""}
+    const clsStr=s.cls||'';
+    const clsM=clsStr.match(/^(\d+)[\s\-–—]?([А-ЯҐЄІЇа-яґєіїА-яA-Za-z]?)/u)||[];
+    const clsDigit=clsM[1]||'';
+    const clsLetter=clsM[2]||'';
+    // Build display string like "7-А" or "11-Б" or just "10"
+    const clsDisplay=clsDigit+(clsLetter?'-'+clsLetter:'');
+    const iconFontSize=clsDisplay.length<=3?'1.05rem':clsDisplay.length<=4?'.9rem':'.78rem';
+    const iconHtml=s.cls
+      ?`<div class="res-icon" style="background:${cc};font-size:${iconFontSize};letter-spacing:-.02em;font-weight:900;color:#fff;">${clsDisplay}</div>`
+      :`<div class="res-icon" style="background:#64748b;font-size:1.3rem;">📊</div>`;
+    const jState=getJournalState();
+    const isJournaled=!!jState[sid];
+    return`<div class="res-session${isJournaled?' session-journaled':''}" id="sc-${sid.replace(/\W/g,'_')}">
+      <div class="res-session-hdr" onclick="toggleResDetail('${sid.replace(/\W/g,'_')}')">
+        ${iconHtml}
+        <div class="res-info">
+          <div class="res-title">${s.title}${s.cls?' · '+s.cls:''}</div>
+          <div class="res-meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
+            ${s.subject?`<span class="lib-tag lib-tag-sub">${s.subject}</span>`:''}
+            ${s.cls?`<span class="lib-tag lib-tag-cls" style="background:${cc};">${s.cls}</span>`:''}
+            <span class="text-sm"><span style="background:rgba(37,99,235,.12);color:var(--blue);font-weight:700;padding:1px 7px;border-radius:5px;">${s.records.length} учасників</span> · ${s.startedAt?`<span style="background:rgba(26,26,46,.08);color:var(--primary);font-weight:700;padding:1px 7px;border-radius:5px;">${new Date(s.startedAt).toLocaleDateString('uk-UA',{day:'numeric',month:'long'})}</span>`:''}</span>
+          </div>
+        </div>
+        <div class="res-badge" style="background:${grade.c};">${grade.l}</div>
+        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportSessionCSV('${sid}')" title="CSV">⬇CSV</button>
+        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="event.stopPropagation();exportSessionPDF('${sid}')" title="PDF">📄PDF</button>
+        <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation();clearSessionResults('${sid}')" title="Видалити">🗑</button>
+        <span style="font-size:.75rem;color:rgba(26,26,46,.35);">▼</span>
+      </div>
+      <div class="res-detail" id="rd-${sid.replace(/\W/g,'_')}">
+        <table class="rtbl">
+          <thead><tr>
+            <th onclick="sortResSession('${sid.replace(/\W/g,'_')}','student')">Учень</th>
+            <th onclick="sortResSession('${sid.replace(/\W/g,'_')}','cls')">Клас</th>
+            <th onclick="sortResSession('${sid.replace(/\W/g,'_')}','pct')">%</th>
+            <th onclick="sortResSession('${sid.replace(/\W/g,'_')}','grade')">Оцінка</th>
+            <th onclick="sortResSession('${sid.replace(/\W/g,'_')}','violations')">Пор.</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="rtb-${sid.replace(/\W/g,'_')}">${renderResRows(s.records)}</tbody>
+        </table>
+        <label style="display:flex;align-items:center;gap:7px;padding:10px 16px;border-top:1px solid var(--border);background:rgba(22,163,74,.04);cursor:pointer;font-size:.76rem;font-weight:600;color:rgba(26,26,46,.55);" onclick="event.stopPropagation()">
+          <input type="checkbox" id="jcb-${sid.replace(/\W/g,'_')}" style="width:auto;cursor:pointer;" ${isJournaled?'checked':''} onchange="toggleJournal('${sid}',this)">
+          ✓ Перенесено у журнал
+        </label>
+      </div>
+    </div>`;
+  }).join('');
+  // Restore open panels
+  openSids.forEach(id=>{const d=el(id);if(d)d.classList.add('open');});
+}
+function toggleResDetail(sid){el('rd-'+sid)?.classList.toggle('open');}
+
+// ── JOURNAL TRANSFER CHECKBOXES ──
+function getJournalState(){try{return JSON.parse(localStorage.getItem('sqpro_journal')||'{}');}catch{return{};}}
+function toggleJournal(sid,cb){
+  const st=getJournalState();
+  st[sid]=cb.checked;
+  localStorage.setItem('sqpro_journal',JSON.stringify(st));
+  // Update card visual
+  const card=document.getElementById('sc-'+sid.replace(/\W/g,'_'));
+  if(card){
+    if(cb.checked)card.classList.add('session-journaled');
+    else card.classList.remove('session-journaled');
+  }
+  updateArchiveBadge();
+  // If archive page is open, re-render it
+  if(document.querySelector('[data-page="archive"].active'))renderArchivePage();
+}
+let rsSortState={};
+let globalSortCol='',globalSortDir=1;
+
+function setGlobalSort(col){
+  // col: 'student', 'pct' (asc), 'pctD' (desc)
+  globalSortCol=col==='pctD'?'pct':col;
+  globalSortDir=col==='pct'?1:-1;
+  // Highlight active button
+  ['gSortStudent','gSortPct','gSortPctD'].forEach(id=>{
+    const b=el(id);if(b)b.classList.remove('btn-primary');if(b)b.classList.add('btn-outline');
+  });
+  const activeId=col==='student'?'gSortStudent':col==='pct'?'gSortPct':'gSortPctD';
+  const ab=el(activeId);if(ab){ab.classList.remove('btn-outline');ab.classList.add('btn-primary');}
+  renderResultsPage();
+}
+
+function sortByGlobal(records){
+  if(!globalSortCol)return records;
+  return [...records].sort((a,b)=>{
+    let va=a[globalSortCol]??'',vb=b[globalSortCol]??'';
+    if(globalSortCol==='pct'||globalSortCol==='violations'){va=+va;vb=+vb;}
+    return va<vb?-globalSortDir:va>vb?globalSortDir:0;
+  });
+}
+
+function sortResSession(sid,col){
+  const k=sid+col;rsSortState[k]=(rsSortState[k]||1)*-1;
+  const rs=getResults();const sessions={};
+  rs.forEach((r,i)=>{const sk=(r.sessionId||r.test||'?').replace(/\W/g,'_');if(!sessions[sk])sessions[sk]=[];sessions[sk].push({...r,_ri:i});});
+  const recs=(sessions[sid]||[]).sort((a,b)=>{let va=a[col]??'',vb=b[col]??'';if(col==='pct'||col==='violations'){va=+va;vb=+vb;}return va<vb?rsSortState[k]:va>vb?-rsSortState[k]:0;});
+  const tb=el('rtb-'+sid);if(tb)tb.innerHTML=renderResRows(recs);
+}
+function renderResRows(records){
+  // Групуємо fingerprints щоб знайти дублі пристроїв
+  const fpMap={};
+  records.forEach(r=>{
+    if(r._fp){
+      const key=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');
+      if(!fpMap[key])fpMap[key]=[];
+      fpMap[key].push(r.student);
+    }
+  });
+  return records.map(r=>{
+    const g=gradeByPct(r.pct);
+    // Перевіряємо підозрілі ознаки
+    const warnings=[];
+    if(r._fp){
+      const key=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');
+      const dupes=fpMap[key].filter(n=>n!==r.student);
+      if(dupes.length>0)warnings.push('Той самий пристрій: '+dupes.join(', '));
+    }
+    if(!r._sig)warnings.push('Немає підпису');
+    const warnHtml=warnings.length?`<span title="${warnings.join('\n')}" style="color:#f59e0b;cursor:help;font-size:.85rem;">⚠️</span>`:'';
+    return`<tr>
+    <td><strong>${r.student}</strong> ${warnHtml}</td>
+    <td class="text-sm">${r.cls||'—'}</td>
+    <td class="text-mono">${r.pct}%</td>
+    <td><span class="gspan" style="background:${g.c}">${g.l}</span></td>
+    <td>${r.violations>0?`<span class="tag tag-r">${r.violations}</span>`:'<span class="tag tag-g">0</span>'}</td>
+    <td style="display:flex;gap:4px;">${r.answersSnapshot?`<button class="btn btn-outline btn-sm" onclick="openAnsModal(${r._ri})">👁</button>`:''}<button class="btn btn-danger btn-sm" onclick="delResult(${r._ri})">✕</button></td>
+  </tr>`;}).join('');
+}
+function openAnsModal(ri){
+  const rs=getResults(),r=rs[ri];if(!r||!r.answersSnapshot)return;
+  el('ansModalTitle').textContent=r.student+' · '+r.test;
+  el('ansModalContent').innerHTML=r.answersSnapshot.map((q,i)=>{
+    const corr=q.correctIndices||[0],given=q.given||[];
+    const ok=q.isMultiple?(given.length===corr.length&&corr.every(c=>given.includes(c))):(given[0]===corr[0]);
+    const ct=corr.map(c=>q.options[c]).join(', '),gt=given.map(g=>q.options[g]).join(', ')||'(не відповів)';
+    return`<div class="ans-item"><div class="ans-q">${i+1}. ${q.text}</div><div class="${ok?'ans-ok':'ans-no'}">${ok?'✓ '+gt:'✗ '+gt+' | Правильно: '+ct}</div></div>`;
+  }).join('');
+  el('ansModal').classList.add('show');
+}
+function delResult(i){
+  const r=_resultsCache[i];
+  if(!r)return;
+  if(db&&r._fbKey){
+    db.ref('results/'+r._fbKey).remove();
+    // Firebase onValue will update other devices automatically
+  }
+  _resultsCache.splice(i,1);
+  localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache));
+  renderResultsPage(); updateResFilter(); renderDash();
+}
+function exportCSV(){
+  const rs=getResults();if(!rs.length){toast('Немає даних');return;}
+  downloadCSV(rs,'results_all.csv');
+}
+
+// ── PDF EXPORT ──
+function getJsPDF(){
+  if(typeof window.jspdf!=='undefined')return window.jspdf.jsPDF;
+  if(typeof window.jsPDF!=='undefined')return window.jsPDF;
+  toast('⚠️ PDF завантажується, спробуйте через секунду');return null;
+}
+
+// ── PDF via HTML rendering (correct Cyrillic) ──
+function renderHTMLtoPDF(htmlContent, filename){
+  const JsPDF=getJsPDF();if(!JsPDF){return;}
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;font-family:Arial,Helvetica,sans-serif;font-size:11pt;color:#1a1a2e;padding:20px;box-sizing:border-box;';
+  wrap.innerHTML=htmlContent;
+  document.body.appendChild(wrap);
+  if(typeof html2canvas==='undefined'){
+    document.body.removeChild(wrap);
+    toast('⚠️ html2canvas не завантажено');return;
+  }
+  toast('⏳ Генерація PDF...');
+  html2canvas(wrap,{scale:2,useCORS:true,logging:false,backgroundColor:'#ffffff'}).then(canvas=>{
+    document.body.removeChild(wrap);
+    const imgData=canvas.toDataURL('image/jpeg',0.92);
+    const doc=new JsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const pageW=doc.internal.pageSize.getWidth();
+    const pageH=doc.internal.pageSize.getHeight();
+    const imgW=pageW-20;
+    const imgH=(canvas.height*imgW)/canvas.width;
+    let y=10;
+    if(imgH<=pageH-20){
+      doc.addImage(imgData,'JPEG',10,y,imgW,imgH);
+    } else {
+      // Multi-page
+      let srcY=0;
+      const pageImgH=pageH-20;
+      const ratio=canvas.width/imgW;
+      while(srcY<canvas.height){
+        if(srcY>0)doc.addPage();
+        const sliceH=Math.min(pageImgH*ratio,canvas.height-srcY);
+        const sliceCanvas=document.createElement('canvas');
+        sliceCanvas.width=canvas.width;sliceCanvas.height=sliceH;
+        sliceCanvas.getContext('2d').drawImage(canvas,0,srcY,canvas.width,sliceH,0,0,canvas.width,sliceH);
+        const sliceData=sliceCanvas.toDataURL('image/jpeg',0.92);
+        doc.addImage(sliceData,'JPEG',10,10,imgW,sliceH/ratio);
+        srcY+=sliceH;
+      }
+    }
+    doc.save(filename);
+    toast('📄 PDF збережено');
+  }).catch(e=>{document.body.removeChild(wrap);toast('Помилка PDF: '+e.message);});
+}
+
+function buildResultsHTML(sessions){
+  let h='<div style="font-family:Arial,sans-serif;font-size:11pt;">';
+  h+='<h2 style="text-align:center;margin-bottom:4px;font-size:16pt;">SecureQuiz — Результати тестування</h2>';
+  h+='<p style="text-align:center;color:#666;font-size:9pt;margin-bottom:16px;">'+new Date().toLocaleDateString('uk-UA')+'</p>';
+  Object.entries(sessions).forEach(([sid,s])=>{
+    const avgPct=s.records.length?Math.round(s.records.reduce((a,r)=>a+r.pct,0)/s.records.length):0;
+    const grade=gradeByPct(avgPct);
+    h+='<div style="background:#f0f4ff;padding:8px 12px;border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">';
+    h+='<strong>'+s.title+(s.cls?' · '+s.cls:'')+'</strong>';
+    h+='<span style="background:'+grade.c+';color:#fff;padding:2px 10px;border-radius:5px;font-weight:700;">'+grade.l+'</span></div>';
+    h+='<table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:9pt;">';
+    h+='<tr style="background:#e8eaf0;"><th style="text-align:left;padding:5px 8px;">Учень</th><th style="padding:5px 8px;">Клас</th><th style="padding:5px 8px;">%</th><th style="padding:5px 8px;">Оцінка</th><th style="padding:5px 8px;">Пор.</th></tr>';
+    s.records.forEach((r,ri)=>{
+      const g2=gradeByPct(r.pct);
+      h+='<tr style="background:'+(ri%2?'#f9f9f9':'#fff')+'">';
+      h+='<td style="padding:4px 8px;border-bottom:1px solid #eee;">'+(r.student||'')+'</td>';
+      h+='<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:center;">'+(r.cls||'—')+'</td>';
+      h+='<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:center;">'+r.pct+'%</td>';
+      h+='<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:center;"><span style="background:'+g2.c+';color:#fff;padding:1px 8px;border-radius:4px;font-weight:700;">'+g2.l+'</span></td>';
+      h+='<td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:center;">'+(r.violations||0)+'</td>';
+      h+='</tr>';
+    });
+    h+='</table>';
+  });
+  h+='</div>';
+  return h;
+}
+
+function exportResultsPDF(){
+  const rs=getResults();if(!rs.length){toast('Немає даних');return;}
+  const sessions={};
+  rs.forEach(r=>{
+    const k=r.sessionId||r.test||'?';
+    if(!sessions[k])sessions[k]={title:r.test,cls:r.launchClass||r.cls||'',records:[]};
+    if(r.launchClass)sessions[k].cls=r.launchClass;
+    sessions[k].records.push(r);
+  });
+  renderHTMLtoPDF(buildResultsHTML(sessions),'results_'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+function exportTestPDF(i){
+  const t=_libCache[i];if(!t){toast('Помилка');return;}
+  let h='<div style="font-family:Arial,sans-serif;font-size:11pt;">';
+  h+='<h2 style="text-align:center;margin-bottom:4px;font-size:15pt;">'+t.title+'</h2>';
+  const meta=[t.subject,t.cls,(t.time||15)+' хв',t.questions.length+' питань'].filter(Boolean).join(' · ');
+  h+='<p style="text-align:center;color:#666;font-size:9pt;margin-bottom:18px;">'+meta+'</p>';
+  t.questions.forEach((q,qi)=>{
+    h+='<div style="margin-bottom:14px;">';
+    h+='<div style="font-weight:700;margin-bottom:6px;font-size:10.5pt;">'+(qi+1)+'. '+q.text+'</div>';
+    (q.options||[]).forEach((o,oi)=>{
+      if(!o)return;
+      const isC=(q.correctIndices||[]).includes(oi);
+      h+='<div style="padding:3px 8px 3px 20px;margin-bottom:3px;'+(isC?'background:#e8f5e9;border-left:3px solid #16a34a;font-weight:700;':'color:#444;')+'font-size:9.5pt;">';
+      h+=(isC?'✓ ':' ○ ')+o+'</div>';
+    });
+    h+='</div>';
+  });
+  h+='</div>';
+  renderHTMLtoPDF(h,(t.title||'test').replace(/\s+/g,'_')+'.pdf');
+}
+
+function exportSessionPDF(sessionId){
+  const rs=getResults().filter(r=>(r.sessionId||r.test||'?')===sessionId);
+  if(!rs.length){toast('Немає даних');return;}
+  const firstR=rs[0];
+  const sessionCls=rs.find(r=>r.launchClass)?.launchClass||firstR.cls||'';
+  const fakeSessions={};
+  fakeSessions[sessionId]={title:firstR.test,cls:sessionCls,records:rs};
+  renderHTMLtoPDF(buildResultsHTML(fakeSessions),(firstR.test||'session').replace(/\s+/g,'_')+'_results.pdf');
+}
+function exportSessionCSV(sessionId){
+  const rs=getResults().filter(r=>(r.sessionId||r.test||'?')===sessionId);
+  if(!rs.length){toast('Немає даних');return;}
+  const name='results_'+(rs[0]?.test||'session').replace(/[^а-яА-ЯҐЄІЇa-zA-Z0-9]/g,'_')+'.csv';
+  downloadCSV(rs,name);
+}
+function downloadCSV(rs,filename){
+  const h='Учень,Клас,Тест,Дата,Бали,Всього,Відсоток,Оцінка,Порушення\n';
+  const rows=rs.map(r=>`"${r.student}","${r.cls||''}","${r.test}","${r.date}",${r.earned},${r.total},${r.pct}%,"${r.grade}",${r.violations}`).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+h+rows],{type:'text/csv;charset=utf-8;'}));a.download=filename;a.click();toast('📊 CSV завантажено');
+}
+
+// ══ MY CLASSES ══
+function getMyClasses(){
+  try{return JSON.parse(localStorage.getItem('sqpro_classes')||'[]');}catch{return[];}
+}
+function setMyClasses(arr){
+  localStorage.setItem('sqpro_classes',JSON.stringify(arr));
+  if(db) db.ref('config/classes').set(arr).catch(()=>{});
+}
+function syncMyClasses(){
+  if(!db)return;
+  db.ref('config/classes').once('value',snap=>{
+    const fb=snap.val();
+    if(Array.isArray(fb)&&fb.length>0){
+      localStorage.setItem('sqpro_classes',JSON.stringify(fb));
+    }
+    updateAIClassSelects();
+  });
+}
+function renderMyClasses(){
+  const classes=getMyClasses();
+  const ed=el('classesEditor');
+  if(!ed)return;
+  if(!classes.length){ed.innerHTML='<div class="text-sm" style="padding:10px 0;opacity:.5;">Класів ще немає. Додайте перший.</div>';return;}
+  ed.innerHTML=classes.map((c,i)=>{
+    const cc=clsColor(c);
+    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="width:32px;height:32px;border-radius:8px;background:${cc};display:flex;align-items:center;justify-content:center;color:#fff;font-size:.78rem;font-weight:800;flex-shrink:0;">${libIconContent(c)||c.slice(0,2)}</div>
+      <span style="flex:1;font-weight:600;font-size:.88rem;">${c}</span>
+      <button class="btn btn-danger btn-sm" onclick="delClass(${i})">✕</button>
+    </div>`;
+  }).join('');
+  renderParallelColorsEditor();
+  renderSubjectsEditor();
+  renderParallelsEditor();
+  updateAISubjectSelects();
+  updateAIParallelSelects();
+}
+
+function renderParallelColorsEditor(){
+  const ed=el('parallelColorsEditor');
+  if(!ed)return;
+  const parallels=['5','6','7','8','9','10','11','12'];
+  const labels={'5':'5 клас — рожевий','6':'6 клас — червоний','7':'7 клас — зелений','8':'8 клас — жовтий','9':'9 клас — оранжевий','10':'10 клас — синій','11':'11 клас — фіолетовий','12':'12 клас — бірюзовий'};
+  ed.innerHTML=parallels.map(p=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <div style="width:34px;height:34px;border-radius:8px;background:${PARALLEL_COLORS[p]||'#6b7280'};flex-shrink:0;"></div>
+      <span style="flex:1;font-size:.83rem;font-weight:600;">${labels[p]||p+' клас'}</span>
+      <input type="color" value="${PARALLEL_COLORS[p]||'#6b7280'}" data-p="${p}" style="width:34px;height:34px;border:none;border-radius:7px;cursor:pointer;padding:2px;" oninput="previewParallelColor('${p}',this.value)">
+    </div>`).join('');
+}
+
+function previewParallelColor(p,color){
+  PARALLEL_COLORS[p]=color;
+  // Update preview dot using data attribute
+  const ed=el('parallelColorsEditor');
+  if(ed){
+    const inp=ed.querySelector(`input[data-p="${p}"]`);
+    if(inp){
+      const dot=inp.parentElement.querySelector('div');
+      if(dot)dot.style.background=color;
+    }
+  }
+}
+
+function saveParallelColors(){
+  localStorage.setItem('sqpro_parallel_colors',JSON.stringify(PARALLEL_COLORS));
+  if(db)db.ref('config/parallel_colors').set(PARALLEL_COLORS).catch(()=>{});
+  toast('🎨 Кольори збережено');
+  renderMyClasses();
+}
+
+function loadParallelColors(){
+  // Try Firebase
+  if(db){
+    db.ref('config/parallel_colors').once('value',snap=>{
+      const fb=snap.val();
+      if(fb&&typeof fb==='object')Object.assign(PARALLEL_COLORS,fb);
+      renderParallelColorsEditor();
+    });
+  }
+  // Fallback localStorage
+  try{
+    const saved=JSON.parse(localStorage.getItem('sqpro_parallel_colors')||'{}');
+    Object.assign(PARALLEL_COLORS,saved);
+  }catch{}
+}
+function addClass(){
+  const inp=el('newClassInput');
+  const val=(inp.value||'').trim().toUpperCase().replace(/\s+/g,'-');
+  if(!val){inp.focus();return;}
+  const classes=getMyClasses();
+  if(classes.includes(val)){toast('Клас вже є');inp.value='';return;}
+  classes.push(val);
+  setMyClasses(classes);
+  renderMyClasses();
+  updateLaunchClassDropdown();
+  updateResClassFilter();
+  updateAIClassSelects();
+  inp.value=''; inp.focus();
+  toast('Клас '+val+' додано');
+}
+function delClass(i){
+  const classes=getMyClasses();
+  classes.splice(i,1);
+  setMyClasses(classes);
+  renderMyClasses();
+  updateLaunchClassDropdown();
+  updateResClassFilter();
+  updateAIClassSelects();
+}
+
+// ══ MY SUBJECTS ══
+function getMySubjects(){
+  try{return JSON.parse(localStorage.getItem('sqpro_subjects')||'[]');}catch{return[];}
+}
+function setMySubjects(arr){
+  localStorage.setItem('sqpro_subjects',JSON.stringify(arr));
+  if(db)db.ref('config/subjects').set(arr).catch(()=>{});
+}
+function syncMySubjects(){
+  if(!db)return;
+  db.ref('config/subjects').once('value',snap=>{
+    const fb=snap.val();
+    if(Array.isArray(fb)&&fb.length>0){
+      localStorage.setItem('sqpro_subjects',JSON.stringify(fb));
+    }
+  });
+}
+function renderSubjectsEditor(){
+  const subjects=getMySubjects();
+  const ed=el('subjectsEditor');
+  if(!ed)return;
+  if(!subjects.length){ed.innerHTML='<div class="text-sm" style="padding:10px 0;opacity:.5;">Предметів ще немає. Додайте перший.</div>';return;}
+  ed.innerHTML=subjects.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:800;flex-shrink:0;">📖</div>
+      <span style="flex:1;font-weight:600;font-size:.88rem;">${s}</span>
+      <button class="btn btn-danger btn-sm" onclick="delSubject(${i})">✕</button>
+    </div>`).join('');
+  updateAISubjectSelects();
+}
+function addSubject(){
+  const inp=el('newSubjectInput');
+  const val=(inp.value||'').trim();
+  if(!val){inp.focus();return;}
+  const subjects=getMySubjects();
+  if(subjects.includes(val)){toast('Предмет вже є');inp.value='';return;}
+  subjects.push(val);
+  setMySubjects(subjects);
+  renderSubjectsEditor();
+  inp.value=''; inp.focus();
+  toast('Предмет "'+val+'" додано');
+}
+function delSubject(i){
+  const subjects=getMySubjects();
+  subjects.splice(i,1);
+  setMySubjects(subjects);
+  renderSubjectsEditor();
+}
+function updateAISubjectSelects(){
+  const subjects=getMySubjects();
+  const sel=el('aiSubjectSel');
+  if(!sel)return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— вибрати —</option>'+subjects.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(subjects.includes(prev))sel.value=prev;
+  updateAIPrompt();
+}
+
+function onAITopicInput(){
+  const topic=(el('aiTopic')?.value||'').trim();
+  const titleField=el('testTitle');
+  if(titleField){
+    const cur=titleField.value;
+    const isDefault=cur===''||cur==='Мій тест';
+    if(isDefault||titleField._aiAutoFilled){
+      titleField.value=topic||'Мій тест';
+      titleField._aiAutoFilled=!!topic;
+    }
+  }
+  updateAIPrompt();
+}
+
+// ══ AUTO-FILL TOP FORM from AI selects ══
+function onAISubjectChange(){
+  const subj=el('aiSubjectSel')?.value||'';
+  if(subj){const f=el('testSubject');if(f)f.value=subj;}
+  updateAIPrompt();
+}
+function onAIParallelChange(){
+  const par=el('aiParallelSel')?.value||''; // e.g. "7 клас"
+  if(par){
+    const f=el('testClass');
+    if(f)f.value=par;
+  }
+  updateAIPrompt();
+}
+
+// ══ MY PARALLELS ══
+function getMyParallels(){
+  try{return JSON.parse(localStorage.getItem('sqpro_parallels')||'[]');}catch{return[];}
+}
+function setMyParallels(arr){
+  localStorage.setItem('sqpro_parallels',JSON.stringify(arr));
+  if(db)db.ref('config/parallels').set(arr).catch(()=>{});
+}
+function syncMyParallels(){
+  if(!db)return;
+  db.ref('config/parallels').once('value',snap=>{
+    const fb=snap.val();
+    if(Array.isArray(fb)&&fb.length>0){
+      localStorage.setItem('sqpro_parallels',JSON.stringify(fb));
+    }
+    updateAIParallelSelects();
+  });
+}
+function renderParallelsEditor(){
+  const parallels=getMyParallels();
+  const ed=el('parallelsEditor');
+  if(!ed)return;
+  if(!parallels.length){ed.innerHTML='<div class="text-sm" style="padding:10px 0;opacity:.5;">Паралелей ще немає. Додайте першу.</div>';return;}
+  ed.innerHTML=parallels.map((p,i)=>{
+    const num=String(p).match(/\d+/)?.[0]||p;
+    const bg=PARALLEL_COLORS[num]||'#64748b';
+    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="width:32px;height:32px;border-radius:8px;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem;font-weight:800;flex-shrink:0;">${num}</div>
+      <span style="flex:1;font-weight:600;font-size:.88rem;">${p}</span>
+      <button class="btn btn-danger btn-sm" onclick="delParallel(${i})">✕</button>
+    </div>`;
+  }).join('');
+  updateAIParallelSelects();
+}
+function addParallel(){
+  const inp=el('newParallelInput');
+  const num=parseInt(inp.value);
+  if(!num||num<1||num>12){inp.focus();return;}
+  const label=num+' клас';
+  const parallels=getMyParallels();
+  if(parallels.includes(label)){toast('Паралель вже є');inp.value='';return;}
+  parallels.push(label);
+  parallels.sort((a,b)=>parseInt(a)-parseInt(b));
+  setMyParallels(parallels);
+  renderParallelsEditor();
+  inp.value=''; inp.focus();
+  toast('Паралель "'+label+'" додано');
+}
+function delParallel(i){
+  const parallels=getMyParallels();
+  parallels.splice(i,1);
+  setMyParallels(parallels);
+  renderParallelsEditor();
+}
+function updateAIParallelSelects(){
+  const parallels=getMyParallels();
+  const sel=el('aiParallelSel');
+  if(!sel)return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— вибрати —</option>'+parallels.map(p=>`<option value="${p}">${p}</option>`).join('');
+  if(parallels.includes(prev))sel.value=prev;
+  updateAIPrompt();
+}
+
+// ══ LAUNCH CLASS DROPDOWN ══
+function updateLaunchClassDropdown(){
+  const sel=el('launchClassSelect');
+  if(!sel)return;
+  const classes=getMyClasses();
+  const testCls=(v('testClass')||'').trim();
+  const parallelMatch=testCls.match(/^(\d+)/);
+  const parallel=parallelMatch?parallelMatch[1]:'';
+  const filtered=parallel?classes.filter(c=>new RegExp('^'+parallel+'[^\\d]').test(c)||c===parallel):classes;
+  const hint=el('launchClassHint');
+  if(parallel&&filtered.length>0){
+    if(hint){hint.textContent='Показано класи '+parallel+'-ї паралелі ('+filtered.length+')';hint.style.display='block';}
+  } else if(parallel&&filtered.length===0){
+    if(hint){hint.textContent='Класів паралелі '+parallel+' ще не додано в «Мої класи»';hint.style.display='block';}
+  } else {
+    if(hint)hint.style.display='none';
+  }
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— Не вказувати клас —</option>'+(filtered.length?filtered:classes).map(c=>`<option value="${c}">${c}</option>`).join('');
+  if((filtered.length?filtered:classes).includes(prev)) sel.value=prev;
+}
+
+// ══ MOTTOS ══
+// Mottos are now stored per-grade in GP array
+
+// ══ RESULTS CLASS FILTER ══
+function updateResClassFilter(){
+  const rf=el('resClassFilter');
+  if(!rf)return;
+  const classes=[...new Set(getResults().map(r=>r.cls).filter(Boolean))];
+  const v2=rf.value;
+  rf.innerHTML='<option value="">Всі класи</option>'+classes.map(c=>`<option value="${c}">${c}</option>`).join('');
+  rf.value=v2;
+}
+
+function updateArchiveBadge(){
+  const st=getJournalState();
+  const rs=getResults();
+  const sessions={};
+  rs.forEach(r=>{const k=r.sessionId||r.test||'?';sessions[k]=true;});
+  const count=Object.keys(sessions).filter(k=>st[k]).length;
+  const badge=el('archiveBadge');
+  if(badge){badge.textContent=count;badge.style.display=count>0?'inline':'none';}
+}
+
+function renderArchivePage(){
+  updateArchiveBadge();
+  const container=el('archiveList');if(!container)return;
+  const st=getJournalState();
+  let rs=getResults();
+  // Group by session
+  const sessions={};
+  rs.forEach((r,i)=>{
+    const k=r.sessionId||r.test||'?';
+    const meta=_sessionMetaCache[k]||{};
+    if(!sessions[k])sessions[k]={
+      title:meta.title||r.test,
+      cls:meta.launchClass||r.launchClass||r.cls||'',
+      launchClass:meta.launchClass||r.launchClass||'',
+      subject:meta.subject||r.subject||'',
+      startedAt:r.startedAt||r.date,
+      records:[]
+    };
+    if(meta.launchClass)sessions[k].cls=meta.launchClass;
+    const cacheIdx=_resultsCache.findIndex(x=>x===r||(x._fbKey&&x._fbKey===r._fbKey)||(x.ts&&x.ts===r.ts&&x.student===r.student));
+    sessions[k].records.push({...r,_ri:cacheIdx>=0?cacheIdx:i});
+  });
+  // Only journaled sessions
+  const archived=Object.entries(sessions).filter(([sid])=>st[sid]);
+  if(!archived.length){
+    container.innerHTML='<div class="empty-state"><div class="esi">🗂</div><p>Архів порожній.<br>Позначте результати як «Перенесено у журнал» на сторінці Результатів.</p></div>';
+    return;
+  }
+  const openSids=new Set();
+  container.querySelectorAll('.res-detail.open').forEach(d=>openSids.add(d.id));
+  container.innerHTML=archived.map(([sid,s])=>{
+    s.records=sortByGlobal(s.records);
+    const avgPct=s.records.length?Math.round(s.records.reduce((a,r)=>a+r.pct,0)/s.records.length):0;
+    const grade=gradeByPct(avgPct);
+    const cc=clsColor(s.cls);
+    const clsStr=s.cls||'';
+    const clsM=clsStr.match(/^(\d+)[\s\-–—]?([А-ЯҐЄІЇа-яґєіїА-яA-Za-z]?)/u)||[];
+    const clsDigit=clsM[1]||'';
+    const clsLetter=clsM[2]||'';
+    const clsDisplay=clsDigit+(clsLetter?'-'+clsLetter:'');
+    const iconFontSize=clsDisplay.length<=3?'1.05rem':clsDisplay.length<=4?'.9rem':'.78rem';
+    const iconHtml=s.cls
+      ?`<div class="res-icon" style="background:${cc};font-size:${iconFontSize};letter-spacing:-.02em;font-weight:900;color:#fff;">${clsDisplay}</div>`
+      :`<div class="res-icon" style="background:#64748b;font-size:1.3rem;">📊</div>`;
+    const sidSafe=sid.replace(/\W/g,'_');
+    return`<div class="res-session session-journaled" id="arc-${sidSafe}">
+      <div class="res-session-hdr" onclick="toggleArchiveDetail('${sidSafe}')">
+        ${iconHtml}
+        <div class="res-info">
+          <div class="res-title">${s.title}${s.cls?' · '+s.cls:''}</div>
+          <div class="res-meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
+            ${s.subject?`<span class="lib-tag lib-tag-sub">${s.subject}</span>`:''}
+            ${s.cls?`<span class="lib-tag lib-tag-cls" style="background:${cc};">${s.cls}</span>`:''}
+            <span class="text-sm">${s.records.length} учасників · ${s.startedAt||''}</span>
+          </div>
+        </div>
+        <div class="res-badge" style="background:${grade.c};">${grade.l}</div>
+        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportArchiveSessionCSV('${sid}')" title="CSV">⬇CSV</button>
+        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="event.stopPropagation();exportArchiveSessionPDF('${sid}')" title="PDF">📄PDF</button>
+        <span style="font-size:.75rem;color:rgba(26,26,46,.35);">▼</span>
+      </div>
+      <label style="display:flex;align-items:center;gap:7px;padding:7px 16px;border-top:1px solid var(--border);background:rgba(22,163,74,.07);cursor:pointer;font-size:.76rem;font-weight:600;color:rgba(22,163,74,.8);" onclick="event.stopPropagation()">
+        <input type="checkbox" id="arcjcb-${sidSafe}" style="width:auto;cursor:pointer;" checked onchange="unarchiveSession('${sid}',this)">
+        ✓ Перенесено у журнал — зніміть, щоб повернути до Результатів
+      </label>
+      <div class="res-detail" id="ard-${sidSafe}">
+        <table class="rtbl">
+          <thead><tr>
+            <th>Учень</th>
+            <th>Клас</th>
+            <th>%</th>
+            <th>Оцінка</th>
+            <th>Пор.</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${renderResRows(s.records)}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+  openSids.forEach(id=>{const d=el(id);if(d)d.classList.add('open');});
+}
+
+function toggleArchiveDetail(sidSafe){el('ard-'+sidSafe)?.classList.toggle('open');}
+
+function unarchiveSession(sid,cb){
+  const st=getJournalState();
+  st[sid]=false;
+  localStorage.setItem('sqpro_journal',JSON.stringify(st));
+  // Update results page card if it exists
+  const card=document.getElementById('sc-'+sid.replace(/\W/g,'_'));
+  if(card){
+    card.classList.remove('session-journaled');
+    const jcb=document.getElementById('jcb-'+sid.replace(/\W/g,'_'));
+    if(jcb)jcb.checked=false;
+  }
+  updateArchiveBadge();
+  renderArchivePage();
+  toast('↩ Повернено до Результатів');
+}
+
+function clearArchive(){
+  if(!confirm('Зняти позначку «Перенесено у журнал» з усіх сесій архіву?'))return;
+  const st=getJournalState();
+  Object.keys(st).forEach(k=>{st[k]=false;});
+  localStorage.setItem('sqpro_journal',JSON.stringify(st));
+  updateArchiveBadge();
+  renderArchivePage();
+  renderResultsPage();
+  toast('Архів очищено — сесії повернуто до Результатів');
+}
+
+function exportArchiveCSV(){
+  const st=getJournalState();
+  const rs=getResults().filter(r=>st[r.sessionId||r.test||'?']);
+  if(!rs.length){toast('Архів порожній');return;}
+  downloadCSV(rs,'archive_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+
+function exportArchivePDF(){
+  const st=getJournalState();
+  const rs=getResults().filter(r=>st[r.sessionId||r.test||'?']);
+  if(!rs.length){toast('Архів порожній');return;}
+  const sessions={};
+  rs.forEach(r=>{
+    const k=r.sessionId||r.test||'?';
+    if(!sessions[k])sessions[k]={title:r.test,cls:r.launchClass||r.cls||'',records:[]};
+    if(r.launchClass)sessions[k].cls=r.launchClass;
+    sessions[k].records.push(r);
+  });
+  renderHTMLtoPDF(buildResultsHTML(sessions),'archive_'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+function exportArchiveSessionCSV(sid){
+  const rs=getResults().filter(r=>(r.sessionId||r.test||'?')===sid);
+  if(!rs.length){toast('Немає даних');return;}
+  const name='archive_'+(rs[0]?.test||'session').replace(/[^а-яА-ЯҐЄІЇa-zA-Z0-9]/g,'_')+'.csv';
+  downloadCSV(rs,name);
+}
+
+function exportArchiveSessionPDF(sid){
+  const rs=getResults().filter(r=>(r.sessionId||r.test||'?')===sid);
+  if(!rs.length){toast('Немає даних');return;}
+  const firstR=rs[0];
+  const sessionCls=rs.find(r=>r.launchClass)?.launchClass||firstR.cls||'';
+  const fakeSessions={};
+  fakeSessions[sid]={title:firstR.test,cls:sessionCls,records:rs};
+  renderHTMLtoPDF(buildResultsHTML(fakeSessions),'archive_'+(firstR.test||'session').replace(/\s+/g,'_')+'.pdf');
+}
+function renderDash(){
+  el('dQ').textContent=questions.length;
+  el('dLib').textContent=_libCache.length;
+  const rs=getResults();el('dSt').textContent=rs.length;
+  const prev=el('dashPreview');
+  if(prev)prev.innerHTML=questions.length?questions.slice(0,4).map((q,i)=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:.79rem;"><span style="font-family:monospace;color:var(--accent);margin-right:5px;">${i+1}.</span>${q.text||'(без тексту)'}</div>`).join('')+(questions.length>4?`<div class="text-sm" style="margin-top:5px;">…ще ${questions.length-4}</div>`:''): '<div class="empty-state"><div class="esi">✏️</div><p>Перейдіть до Конструктора</p></div>';
+  const rec=el('dashRecent');
+  if(rec)rec.innerHTML=rs.slice(0,5).length?rs.slice(0,5).map(r=>{const g=gradeByPct(r.pct);const cc=clsColor(r.cls);return`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:700;font-size:.82rem;">${r.student}</div><div class="text-sm">${r.date}${r.cls?' · <span style="background:'+cc+';color:#fff;padding:1px 5px;border-radius:4px;font-size:.62rem;font-weight:700;">'+r.cls+'</span>':''}</div></div><span class="gspan" style="background:${g.c};font-size:.82rem;">${g.l}</span></div>`}).join(''):'<div class="empty-state"><div class="esi">📊</div><p>Ще немає результатів</p></div>';
+}
+
+// ══ PREVIEW ══
+let _pvIdx=0, _pvShowAns=true;
+
+function openPreview(){
+  if(!questions.length){toast('⚠️ Немає питань для перегляду');return;}
+  _pvIdx=0; _pvShowAns=true;
+  el('previewModal').classList.add('show');
+  renderPreviewQ();
+}
+
+function previewNav(dir){
+  _pvIdx=Math.max(0,Math.min(questions.length-1,_pvIdx+dir));
+  _pvShowAns=true;
+  renderPreviewQ();
+}
+
+function renderPreviewQ(){
+  const q=questions[_pvIdx];
+  if(!q)return;
+  const total=questions.length;
+  el('previewTitle').textContent='👁 '+( v('testTitle')||'Тест');
+  el('previewCounter').textContent=(_pvIdx+1)+' / '+total;
+
+  const letters=['А','Б','В','Г','Д','Е'];
+  const optBgs=['#fef3c7','#dbeafe','#dcfce7','#fce7f3','#ede9fe','#ffedd5'];
+  const optsHtml=q.options.map((o,oi)=>{
+    if(!o&&!q.optionImages?.[oi])return'';
+    const isCorr=(q.correctIndices||[0]).includes(oi);
+    const img=q.optionImages?.[oi];
+    const bg=isCorr&&_pvShowAns?'#dcfce7':(optBgs[oi]||'#f3f4f6');
+    const border=isCorr&&_pvShowAns?'2px solid #16a34a':'2px solid transparent';
+    return`<div class="pv-opt" style="background:${bg};border:${border};">
+      <div class="pv-badge" style="${isCorr&&_pvShowAns?'background:#16a34a;color:#fff;border-color:#16a34a;':''}">${_pvShowAns&&isCorr?'✓':letters[oi]||oi+1}</div>
+      ${img?`<img src="${img}" class="pv-opt-img" onerror="this.style.display='none'">`:'' }
+      <span>${o||''}</span>
+    </div>`;
+  }).join('');
+
+  const timerMode=v('timerMode')||'total';
+  const timeLabel=timerMode==='perq'?(v('testTimePerQ')||30)+' сек/пит.':(v('testTime')||15)+' хв';
+
+  el('previewBody').innerHTML=`
+    <div class="pv-info">
+      <span class="pv-chip">Питання ${_pvIdx+1} з ${total}</span>
+      <span class="pv-chip">${q.points||1} б.</span>
+      ${q.isMultiple?'<span class="pv-chip" style="background:rgba(37,99,235,.1);color:var(--blue);">Множинний вибір</span>':''}
+      <span class="pv-chip">⏱ ${timeLabel}</span>
+    </div>
+    ${q.imageUrl?`<img src="${q.imageUrl}" class="pv-img" onerror="this.style.display='none'">`:'' }
+    <div class="pv-q">${q.text||'(без тексту)'}</div>
+    ${q.isMultiple?'<div class="pv-multi">Оберіть всі правильні варіанти</div>':''}
+    <label class="pv-show-ans" onclick="_pvShowAns=!_pvShowAns;renderPreviewQ();">
+      <input type="checkbox" ${_pvShowAns?'checked':''} style="width:auto;cursor:pointer;">
+      Показати правильні відповіді
+    </label>
+    <div>${optsHtml}</div>`;
+}
+
+// ══ UTILS ══
+function el(id){return document.getElementById(id);}
+function v(id){const e=el(id);return e?e.value:'';}
+function getSec(id){const e=el(id);return e?e.checked:false;}
+function getSecVal(id){const e=el(id);return e?parseInt(e.value)||3:3;}
+function closeModal(id){el(id).classList.remove('show');}
+function toast(msg){const t=el('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+document.addEventListener('click',e=>{if(e.target.classList.contains('modal-bg'))closeModal(e.target.id);});
+
+// ══ INIT ══
+function initApp(){
+  loadTheme(); renderGrades(); loadGradeSettings();
+  // Запускаємо Firebase — він сам вирішить показати логін чи панель
+  initFirebase();
+  window.addEventListener('storage',e=>{
+    if(!currentUser)return; // ігноруємо якщо не авторизовані
+    if(e.key==='sqpro_results'||e.key==='sqpro_lib')renderDash();
+  });
+}
+
+// Виконується тільки після підтвердження auth
+function _postAuthInit(){
+  loadTheme(); loadParallelColors(); renderGrades(); loadGradeSettings();
+  renderDash(); renderResultsPage(); updateResFilter(); updateLibFilters(); updateArchiveBadge();
+  syncMySubjects();
+  syncMyParallels();
+  updateAISubjectSelects();
+  updateAIParallelSelects();
+  updateAIPrompt();
+  const saved=JSON.parse(localStorage.getItem('sqpro_sec')||'{}');
+  if(saved.maxviol!==undefined){const e=el('s-maxviol');if(e)e.value=saved.maxviol;}
+  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','finishOnTime'].forEach(id=>{
+    if(saved[id]!==undefined){const e=el(id);if(e)e.checked=saved[id];}
+  });
+  document.querySelectorAll('#s-tab,#s-blur,#s-ctx,#s-copy,#s-prtsc,#s-wm,#s-shuffle,#finishOnTime,#s-maxviol').forEach(inp=>{
+    inp.addEventListener('change',saveSecSettings);inp.addEventListener('input',saveSecSettings);
+  });
+  if(!db){syncLibrary();}
+}
+
+// ══ АУДИТ БЕЗПЕКИ ══
+async function runSecAudit(){
+  const el2=el('secAudit');
+  if(!el2)return;
+  el2.innerHTML='<div style="opacity:.5;font-size:.8rem;">Перевіряємо…</div>';
+  const checks=[];
+  const warn=(label,info)=>checks.push({label,ok:false,info});
+  const ok=(label,info)=>checks.push({label,ok:true,info});
+  const info=(label,info,isOk)=>checks.push({label,ok:isOk,info});
+
+  // ── AUTH & CONNECTION ──
+  info('Firebase Authentication', currentUser?'Авторизовано як '+currentUser.email:'❌ Не авторизовано', !!currentUser);
+  info('HTTPS з\'єднання', location.protocol==='https:'?'Захищений протокол':(location.hostname==='localhost'?'localhost (OK для розробки)':'⚠️ HTTP — дані передаються відкрито'), location.protocol==='https:'||location.hostname==='localhost');
+  info('Firebase підключено', db?'З\'єднання активне':'❌ Firebase не підключено', !!db);
+
+  // ── CRYPTO ──
+  const cryptoOk=!!(window.crypto&&window.crypto.subtle);
+  info('Web Crypto API (AES-256)', cryptoOk?'Доступний':'Браузер не підтримує шифрування', cryptoOk);
+
+  // ── FIREBASE RULES ──
+  if(db){
+    try{
+      info('Firebase Rules', currentUser?'Авторизований доступ активний':'Перевірте Rules у Firebase Console', !!currentUser);
+    }catch{
+      warn('Firebase Rules','Не вдалось перевірити');
+    }
+  }
+
+  // ── SECURITY TOGGLES ──
+  const secItems=[
+    {id:'s-tab',  label:'Моніторинг вкладок',       rec:'Фіксує перехід учня на іншу вкладку'},
+    {id:'s-blur', label:'Розмиття при відволіканні', rec:'Тест розмивається при втраті фокусу'},
+    {id:'s-ctx',  label:'Блок контекстного меню',   rec:'Права кнопка миші вимкнена'},
+    {id:'s-copy', label:'Блок копіювання тексту',   rec:'Ctrl+C та виділення заборонено'},
+    {id:'s-prtsc',label:'Виявлення Print Screen',   rec:'Фіксує PrtSc на Desktop'},
+    {id:'s-wm',   label:'Водяний знак',              rec:'Ім\'я учня поверх контенту — захист від фото'},
+    {id:'s-shuffle',label:'Перемішування питань',   rec:'Кожен учень бачить різний порядок'},
+  ];
+  secItems.forEach(({id,label,rec})=>{
+    const on=getSec(id);
+    info(label, on?'✅ Увімкнено':'⚠️ Вимкнено — '+rec, on);
+  });
+
+  // ── MAX VIOLATIONS ──
+  const mv=getSecVal('s-maxviol');
+  info('Макс. порушень до завершення', mv<=5?`${mv} — прийнятне значення`:(mv<=10?`${mv} — допустимо`:`${mv} — занадто м'яко, рекомендуємо ≤5`), mv<=5);
+
+  // ── ACTIVE STALE SESSIONS ──
+  if(db){
+    const snap=await db.ref('sessions').once('value').catch(()=>null);
+    if(snap){
+      const all=snap.val()||{};
+      const stale=Object.values(all).filter(s=>s.status==='active'&&s.startedAt&&(Date.now()-new Date(s.startedAt).getTime())>4*60*60*1000).length;
+      const active=Object.values(all).filter(s=>s.status==='active').length;
+      info('Застарілі активні сесії (>4год)', stale===0?`Немає (активних: ${active})`:`⚠️ ${stale} застарілих — зупиніть на сторінці Активні тести`, stale===0);
+    }
+  }
+
+  // ── DUPLICATE FINGERPRINTS IN RESULTS ──
+  const rs=getResults();
+  if(rs.length){
+    const fpMap={};
+    rs.forEach(r=>{if(r._fp){const k=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');fpMap[k]=(fpMap[k]||[]);fpMap[k].push(r.student);}});
+    const dupes=Object.values(fpMap).filter(arr=>[...new Set(arr)].length>1).length;
+    info('Дублі пристроїв у результатах', dupes===0?'Підозрілих збігів не знайдено':`⚠️ ${dupes} підозрілих збігів пристроїв — перегляньте результати`, dupes===0);
+
+    const noSig=rs.filter(r=>!r._sig).length;
+    info('Підписи результатів', noSig===0?'Всі результати підписані':`⚠️ ${noSig} результатів без цифрового підпису`, noSig===0);
+  }
+
+  // ── BROWSER SECURITY FEATURES ──
+  info('localStorage доступний', typeof localStorage!=='undefined'?'Налаштування зберігаються локально':'❌ Недоступний', typeof localStorage!=='undefined');
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  info('Тип пристрою', isMobile?'📱 Мобільний — системний скріншот не блокується (водяний знак критичний)':'💻 Desktop — повний захист активний', !isMobile);
+
+  const pass=checks.filter(c=>c.ok).length;
+  const total2=checks.length;
+  const score=Math.round(pass/total2*100);
+  const scoreColor=score>=80?'#16a34a':score>=60?'#d97706':'#dc2626';
+
+  el2.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0 12px;border-bottom:2px solid var(--border);margin-bottom:8px;">
+    <div style="font-size:1.6rem;font-weight:800;color:${scoreColor};">${score}%</div>
+    <div style="font-size:.78rem;line-height:1.5;"><strong>Загальна оцінка безпеки</strong><br><span style="opacity:.6;">${pass} з ${total2} перевірок пройдено</span></div>
+  </div>`+checks.map(c=>`
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:.9rem;flex-shrink:0;margin-top:1px;">${c.ok?'✅':'⚠️'}</span>
+      <div style="flex:1;min-width:0;">
+        <span style="font-weight:600;font-size:.8rem;">${c.label}</span>
+        <div style="color:rgba(26,26,46,.5);font-size:.73rem;margin-top:1px;">${c.info}</div>
+      </div>
+    </div>`).join('');
+}
+
+function saveSecSettings(){
+  const data={maxviol:getSecVal('s-maxviol')};
+  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','finishOnTime'].forEach(id=>{
+    const e=el(id);if(e)data[id]=e.checked;
+  });
+  localStorage.setItem('sqpro_sec',JSON.stringify(data));
+}
+
+// Enter на формі входу
+document.addEventListener('keydown',ev=>{
+  if(ev.key!=='Enter')return;
+  if(el('loginWrap')?.style.display==='none')return;
+  if(el('forgotFormWrap')?.style.display==='block')doForgotPassword();
+  else doLogin();
+});
+
+document.addEventListener('DOMContentLoaded',initApp);
+</script>
+</body>
+</html>
