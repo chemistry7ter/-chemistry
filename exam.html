@@ -252,11 +252,10 @@ function loadExamTheme(){
 }
 
 
-// ══ БЛОК БЕЗ SESSION — одразу при завантаженні скрипта ══
+// ══ БЛОК БЕЗ SESSION — одразу при завантаженні ══
 (function(){
   const sid=new URLSearchParams(location.search).get('session');
   if(!sid){
-    // Якщо відкрили exam.html напряму без параметра — показуємо заглушку
     document.addEventListener('DOMContentLoaded',()=>{
       document.body.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f5f0e8;font-family:system-ui;">
         <div style="text-align:center;padding:40px 24px;max-width:360px;">
@@ -271,21 +270,10 @@ function loadExamTheme(){
 })();
 
 // ══ КРИПТО — AES-GCM 256 ══
-// Питання шифруються вчителем ключем, який передається ТІЛЬКИ в URL (не в Firebase).
-// Після завантаження ключ видаляється з URL і живе лише в пам'яті.
 async function _aesKey(raw){
   const enc=new TextEncoder();
-  // Паддинг до 32 байт нульовими байтами (не рядком '0')
-  const rawBytes=enc.encode(raw);
-  const seed=new Uint8Array(32);
-  seed.set(rawBytes.slice(0,32));
+  const seed=enc.encode((raw+'00000000000000000000000000000000').slice(0,32));
   return crypto.subtle.importKey('raw',seed,{name:'AES-GCM'},false,['encrypt','decrypt']);
-}
-async function encryptData(obj,keyRaw){
-  const key=await _aesKey(keyRaw);
-  const iv=crypto.getRandomValues(new Uint8Array(12));
-  const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj)));
-  return {iv:btoa(String.fromCharCode(...iv)),d:btoa(String.fromCharCode(...new Uint8Array(cipher)))};
 }
 async function decryptData(enc,keyRaw){
   const key=await _aesKey(keyRaw);
@@ -303,27 +291,24 @@ let examActive=false;
 let studentName='', studentClass='', participantId='';
 let multiSel=[];
 
-// ══ WeakMap — правильні відповіді НІКОЛИ не зберігаються у публічних змінних ══
+// ══ WeakMap — правильні відповіді не в публічних змінних ══
 const _correct=new WeakMap();
 function _getCorrect(q){return _correct.get(q)||[0];}
 
-// ══ ЗАХИСТ: одноразовий токен результату ══
-// Кожна сесія учня отримує унікальний nonce — запобігає повторному відправленню
+// ══ Одноразовий прапор результату ══
 let _resultSubmitted=false;
 const _sessionNonce=crypto.randomUUID();
 
-// ══ ЗАХИСТ: блокуємо DevTools через розрив часу ══
-// Коли DevTools відкриті — debugger зупиняє JS і час "зникає"
+// ══ Детектор debugger-паузи ══
 let _lastTick=Date.now();
 setInterval(()=>{
-  if(!examActive)return; // тільки під час активного тесту
-  const now=Date.now();
-  const delta=now-_lastTick;
-  _lastTick=now;
-  if(delta>4000){ // 4с — безпечний поріг, менший дає хибні спрацювання
-    violation('DevTools','Виявлено паузу виконання — підозра на відладчик.');
-  }
+  const now=Date.now();const delta=now-_lastTick;_lastTick=now;
+  if(!examActive||_resultSubmitted||document.hidden)return;
+  if(delta>4000)violation('DevTools','Виявлено паузу виконання — підозра на відладчик.');
 },1000);
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){_lastTick=Date.now();if(examActive)blurBody(false);}
+});
 
 // ── FIREBASE ──
 function initFB(){
@@ -341,13 +326,9 @@ window.addEventListener('DOMContentLoaded',async()=>{
   loadExamTheme();
   const params=new URLSearchParams(location.search);
   const sid=params.get('session');
-  const encKey=params.get('k'); // ключ шифрування з URL
-
-  // Одразу прибираємо ключ з URL (щоб не лишився в history браузера)
-  if(encKey){
-    const cleanUrl=location.pathname+'?session='+sid;
-    history.replaceState({},'',cleanUrl);
-  }
+  const encKey=params.get('k');
+  // Видаляємо ключ з URL одразу після зчитування
+  if(encKey){history.replaceState({},'',location.pathname+'?session='+sid);}
 
   if(sid&&fbOk){
     try{
@@ -355,11 +336,8 @@ window.addEventListener('DOMContentLoaded',async()=>{
       payload=snap.val();
       if(!payload){showErr('Сесія не знайдена або вже закрита.');return;}
       if(payload.status==='stopped'){showStopped();return;}
-      // Валідація структури payload
-      if(typeof payload!=='object'||typeof payload.sessionId!=='string'){showErr('Пошкоджені дані сесії.');return;}
-      if(!encKey&&!payload.encQ&&(!Array.isArray(payload.questions)||!payload.questions.length)){showErr('Тест не містить питань.');return;}
 
-      // Розшифровуємо питання якщо є ключ і шифрування
+      // Розшифровуємо питання якщо є ключ
       if(encKey&&payload.encQ){
         try{
           payload.questions=await decryptData(payload.encQ,encKey);
@@ -375,9 +353,10 @@ window.addEventListener('DOMContentLoaded',async()=>{
       showIntro();
     }catch(e){showErr('Помилка: '+e.message);}
   } else if(sid){
+    // Firebase not configured but session ID present
     showErr('Firebase не налаштовано. Зверніться до вчителя.');
   } else {
-    // Fallback localStorage (локальне тестування без Firebase)
+    // Fallback localStorage (local testing)
     try{
       const raw=localStorage.getItem('sqpro_exam_payload');
       if(!raw)throw new Error('Немає даних тесту');
@@ -389,13 +368,10 @@ window.addEventListener('DOMContentLoaded',async()=>{
 });
 
 function showErr(msg){
-  // Санітизуємо повідомлення перед вставкою в DOM
-  const safe=document.createElement('div');
-  safe.textContent=msg;
   g('body').innerHTML=`<div style="text-align:center;padding:40px 20px;max-width:380px;">
     <div style="font-size:2.5rem;margin-bottom:12px;">⚠️</div>
     <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:8px;color:#1a1a2e;">Помилка</h2>
-    <p style="font-size:.82rem;color:rgba(26,26,46,.45);line-height:1.6;">${safe.innerHTML}</p>
+    <p style="font-size:.82rem;color:rgba(26,26,46,.45);line-height:1.6;">${msg}</p>
     <p style="font-size:.75rem;color:rgba(26,26,46,.3);margin-top:10px;">Зверніться до вчителя.</p>
   </div>`;
 }
@@ -460,13 +436,11 @@ function showIntro(){
 // ── START ──
 function startExam(){
   const nameEl=g('nameInp');
-  const rawName=(nameEl?.value||'').trim();
-  // Ліміт 80 символів + дозволені символи (кирилиця, латиниця, пробіл, дефіс)
-  const name=rawName.slice(0,80).replace(/[<>"'`&]/g,'');
-  if(!name||name.length<2){if(nameEl){nameEl.style.borderColor='#ef4444';nameEl.focus();}return;}
+  const name=(nameEl?.value||'').trim();
+  if(!name){if(nameEl){nameEl.style.borderColor='#ef4444';nameEl.focus();}return;}
   studentName=name;
   studentClass=((payload.launchClass||'').trim()||(payload.cls||'').trim());
-  participantId='p_'+crypto.randomUUID().replace(/-/g,'').slice(0,20);
+  participantId='p_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
   showMoodCheck();
 }
 
@@ -581,6 +555,7 @@ function _launchExam(){
 
 // ── RENDER QUESTION ──
 function renderQ(){
+  _qStartTime=Date.now();
   multiSel=[];
   const q=examQs[currentQ];
   const multi=!!q.isMultiple;
@@ -646,9 +621,15 @@ function updatePerqDisplay(){
 }
 
 // ── ANSWER LOGIC ──
+let _qStartTime=0;
+function renderQ_trackTime(){_qStartTime=Date.now();}
+
 function doPick(oi){
   if(!examActive)return;
+  const timeSpent=Date.now()-_qStartTime;
   examAnswers[currentQ]=[oi];
+  if(!examAnswers._times)examAnswers._times=[];
+  examAnswers._times[currentQ]=timeSpent;
   // Disable all
   document.querySelectorAll('.opt').forEach(el=>el.classList.add('disabled'));
   const sel=g('opt'+oi);
@@ -676,6 +657,8 @@ function doToggle(oi){
 function confirmMulti(){
   if(!examActive)return;
   examAnswers[currentQ]=[...multiSel];
+  if(!examAnswers._times)examAnswers._times=[];
+  examAnswers._times[currentQ]=Date.now()-_qStartTime;
   document.querySelectorAll('.opt').forEach(el=>el.classList.add('disabled'));
   const btn=g('confirmBtn');if(btn)btn.disabled=true;
   clearInterval(perqInt);
@@ -727,31 +710,31 @@ function attachSecurity(){
   }
   if(sec.ctx)document.addEventListener('contextmenu',onCtx);
   if(sec.copy){document.addEventListener('copy',onCopy);document.addEventListener('cut',onCopy);}
-  if(sec.prtsc){
-    document.addEventListener('keydown',onKey);
-    window.addEventListener('keyup',ev=>{
-      if(ev.key==='PrintScreen'||ev.keyCode===44){flashWhite();violation('Print Screen','Спроба зробити знімок екрана.');}
-    });
-  }
+  // Завжди реєструємо keydown — і prtsc і devtools
+  document.addEventListener('keydown',onKey);
+  window.addEventListener('keyup',ev=>{
+    if(ev.key==='PrintScreen'||ev.keyCode===44){
+      flashWhite();
+      violation('Print Screen','Спроба зробити знімок екрана.');
+    }
+  });
 }
 
+let _lastSplitViol=0;
 function checkSplitScreen(){
-  if(!examActive)return;
-  const ww=window.innerWidth, wh=window.innerHeight;
-  const sw=window.screen.width, sh=window.screen.height;
-  // Detect split: window is significantly smaller than screen
-  const wRatio=ww/sw, hRatio=wh/sh;
-  // Allow for browser chrome (address bar etc) — threshold 0.55
-  if(wRatio<0.55||hRatio<0.55){
+  if(!examActive||_resultSubmitted)return;
+  if(Date.now()-_lastSplitViol<5000)return;
+  const ww=window.innerWidth,sw=window.screen.width;
+  const wh=window.innerHeight,sh=window.screen.height;
+  if((ww/sw)<0.55||(wh/sh)<0.55){
+    _lastSplitViol=Date.now();
     violation('Розділений екран','Виявлено розділений екран або плаваюче вікно.');
+    return;
   }
-  // Detect overlay: document not fully visible
-  if(document.hidden){return;} // handled by visibilitychange
-  // VisualViewport check for floating/picture-in-picture overlays
   if(window.visualViewport){
     const vv=window.visualViewport;
-    const vRatio=(vv.width*vv.scale)/sw;
-    if(vRatio<0.5){
+    if((vv.width*vv.scale)/sw<0.5){
+      _lastSplitViol=Date.now();
       violation('Плаваюче вікно','Виявлено плаваюче або накладне вікно.');
     }
   }
@@ -765,10 +748,23 @@ function detachSecurity(){
   document.removeEventListener('copy',onCopy);
   document.removeEventListener('cut',onCopy);
   document.removeEventListener('keydown',onKey);
-  g('wmLayer').innerHTML='';
+  const wl=g('wmLayer');if(wl)wl.innerHTML='';
 }
-function onVis(){if(!examActive||!document.hidden)return;violation('Перехід на іншу вкладку','Ви залишили вікно тесту.');if(payload.secSettings?.blur)blurBody(true);}
-function onBlur(){if(!examActive||document.hidden)return;violation('Втрата фокусу','Перехід до іншого вікна.');if(payload.secSettings?.blur)blurBody(true);}
+let _lastFocusViol=0;
+function onVis(){
+  if(!examActive||_resultSubmitted||!document.hidden)return;
+  if(Date.now()-_lastFocusViol<2000)return;
+  _lastFocusViol=Date.now();
+  violation('Перехід на іншу вкладку','Ви залишили вікно тесту.');
+  if(payload.secSettings?.blur)blurBody(true);
+}
+function onBlur(){
+  if(!examActive||_resultSubmitted||document.hidden)return;
+  if(Date.now()-_lastFocusViol<2000)return;
+  _lastFocusViol=Date.now();
+  violation('Втрата фокусу','Перехід до іншого вікна.');
+  if(payload.secSettings?.blur)blurBody(true);
+}
 function onCtx(ev){ev.preventDefault();if(!examActive)return;violation('Контекстне меню','Спроба відкрити контекстне меню.');}
 function onCopy(ev){ev.preventDefault();if(!examActive)return;violation('Копіювання','Спроба скопіювати текст тесту.');}
 function onKey(ev){
@@ -776,8 +772,7 @@ function onKey(ev){
   if(ev.key==='PrintScreen'||ev.keyCode===44){ev.preventDefault();flashWhite();violation('Print Screen','Спроба зробити знімок.');return;}
   if(ev.key==='F12'||(ev.ctrlKey&&ev.shiftKey&&'IJCK'.includes(ev.key.toUpperCase()))||(ev.ctrlKey&&ev.key==='u')){ev.preventDefault();violation('DevTools','Спроба відкрити інструменти розробника.');}
 }
-function blurBody(on){g('body').style.filter=on?'blur(14px)':'';}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&examActive)blurBody(false);});
+function blurBody(on){const b=g('body');if(b)b.style.filter=on?'blur(14px)':'';}
 function flashWhite(){
   const f=document.createElement('div');
   f.style.cssText='position:fixed;inset:0;background:#fff;z-index:99999;pointer-events:none;';
@@ -791,13 +786,8 @@ function buildDots(){
     for(let i=0;i<max;i++){const d=document.createElement('div');d.className='vd';d.id=id+'_'+i;c.appendChild(d);}
   });
 }
-let _lastViolTime=0;
 function violation(title,desc){
-  if(!examActive)return;
-  // Дедублікація: ігнорувати повторне порушення того ж типу протягом 1.5с
-  const now=Date.now();
-  if(now-_lastViolTime<1500)return;
-  _lastViolTime=now;
+  if(!examActive||_resultSubmitted)return;
   violCount++;
   examViolations.push({title,desc,time:new Date().toLocaleTimeString('uk-UA'),q:currentQ+1});
   ['barDots','secVdots'].forEach(id=>{const d=g(id+'_'+(violCount-1));if(d)d.classList.add('hit');});
@@ -811,7 +801,7 @@ function violation(title,desc){
 function dismissSec(){g('secOverlay').classList.remove('show');blurBody(false);}
 
 function buildWM(){
-  const wl=g('wmLayer');wl.innerHTML='';
+  const wl=g('wmLayer');if(wl)wl.innerHTML='';
   const t=studentName+(studentClass?' · '+studentClass:'')+' · SecureQuiz';
   for(let r=-2;r<20;r++)for(let c=-1;c<8;c++){
     const el=document.createElement('div');el.className='wm';el.textContent=t;
@@ -820,22 +810,15 @@ function buildWM(){
 }
 
 // ── FIREBASE ──
-let _lastProgressSend=0;
 function sendProgress(data){
   if(!db||!sessionRef)return;
-  const now=Date.now();
-  // Rate-limit: не надсилати частіше ніж раз на 2 секунди
-  if(now-_lastProgressSend<2000)return;
-  _lastProgressSend=now;
   sessionRef.child('participants/'+participantId).update(data).catch(()=>{});
 }
 
 // ── FINISH ──
 function finishExam(reason){
-  // ══ Захист від повторного виклику ══
-  if(_resultSubmitted){return;}
+  if(_resultSubmitted)return;
   _resultSubmitted=true;
-
   examActive=false;
   clearInterval(timerInt);clearInterval(perqInt);
   detachSecurity();
@@ -876,7 +859,7 @@ function finishExam(reason){
     </div>`;
   }
 
-  // ══ Fingerprint пристрою — допомагає виявити одну людину з кількох акаунтів ══
+  // ══ Fingerprint пристрою ══
   const _fp={
     ua:navigator.userAgent.slice(0,80),
     lang:navigator.language,
@@ -885,6 +868,11 @@ function finishExam(reason){
     cores:navigator.hardwareConcurrency||0,
     nonce:_sessionNonce
   };
+  // ══ Час відповідей ══
+  const times=examAnswers._times||[];
+  const avgTime=times.length?Math.round(times.reduce((a,b)=>a+(b||0),0)/times.length):0;
+  const fastCount=times.filter(t=>t&&t<1500).length;
+  const _timing={avg:avgTime,fastCount,times:times.map(t=>Math.round((t||0)/100)*100)};
 
   // Save result
   const result={
@@ -896,7 +884,7 @@ function finishExam(reason){
     startedAt:payload.startedAt,ts:Date.now(),
     earned:+earned.toFixed(1),total:totalPts,pct,
     grade:grade.l,gradeColor:grade.c,violations:violCount,reason,
-    _fp,
+    _fp,_timing,
     answersSnapshot:examQs.map((q,i)=>({
       text:q.text,options:q.options,
       correctIndices:_getCorrect(q),
@@ -904,38 +892,35 @@ function finishExam(reason){
       given:examAnswers[i]||[]
     }))
   };
-  // localStorage fallback — зберігаємо БЕЗ правильних відповідей
-  try{
-    const safeResult={...result};
-    // Видаляємо правильні відповіді з локального збереження
-    if(safeResult.answersSnapshot){
-      safeResult.answersSnapshot=safeResult.answersSnapshot.map(a=>({
-        text:a.text,given:a.given,isMultiple:a.isMultiple
-        // correctIndices НЕ зберігаємо локально
-      }));
-    }
-    const rs=JSON.parse(localStorage.getItem('sqpro_results')||'[]');
-    rs.unshift(safeResult);
-    localStorage.setItem('sqpro_results',JSON.stringify(rs.slice(0,500)));
-  }catch(e){}
+  // localStorage fallback — синхронно
+  try{const rs=JSON.parse(localStorage.getItem('sqpro_results')||'[]');rs.unshift(result);localStorage.setItem('sqpro_results',JSON.stringify(rs.slice(0,500)));}catch(e){}
 
-  // Підписуємо результат HMAC-SHA256 щоб вчитель міг перевірити цілісність
-  // Підпис = hash(sessionId + studentName + pct + ts) — видно в результатах як поле _sig
+  // ══ HMAC підпис + Firebase (async) ══
   (async()=>{
     try{
-      const msg=new TextEncoder().encode([result.sessionId,result.student,result.pct,result.ts,_sessionNonce].join('|'));
-      // Використовуємо весь sessionId (48 hex символів) + nonce як ключовий матеріал
-      const keyMaterial=new TextEncoder().encode((result.sessionId+_sessionNonce).slice(0,32).padEnd(32,'x'));
-      const key=await crypto.subtle.importKey('raw',keyMaterial,{name:'HMAC',hash:'SHA-256'},false,['sign']);
-      const sig=await crypto.subtle.sign('HMAC',key,msg);
-      result._sig=Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32);
-    }catch(e){}
-    // Firebase — зберігаємо після підпису
-    if(db){
-      const key=participantId+'_r';
-      db.ref('results/'+key).set(result).catch(()=>{});
-      sendProgress({name:studentName,cls:studentClass,status:'done',pct,grade:grade.l,violations:violCount,current:examQs.length,total:examQs.length});
-    }
+      const msg=new TextEncoder().encode([result.sessionId,result.student,result.pct,result.ts].join('|'));
+      const hmacKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(result.sessionId.slice(0,16).padEnd(16,'0')),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+      const sig=await crypto.subtle.sign('HMAC',hmacKey,msg);
+      result._sig=Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+    }catch(_){}
+
+    if(!db)return;
+
+    // Rate limiting — перевіряємо чи вже є результат від цього учня
+    try{
+      const existingSnap=await db.ref('results').orderByChild('sessionId').equalTo(result.sessionId).once('value');
+      const existing=existingSnap.val()||{};
+      const alreadySubmitted=Object.values(existing).some(r=>r.student===result.student&&r.sessionId===result.sessionId);
+      if(alreadySubmitted){
+        sendProgress({name:studentName,cls:studentClass,status:'done',pct,grade:grade.l,violations:violCount,current:examQs.length,total:examQs.length});
+        return;
+      }
+    }catch(_){}
+
+    try{
+      await db.ref('results/'+participantId+'_r').set(result);
+    }catch(e){console.warn('Firebase save failed:',e.message);}
+    sendProgress({name:studentName,cls:studentClass,status:'done',pct,grade:grade.l,violations:violCount,current:examQs.length,total:examQs.length});
   })();
 
   // Arc circumference
@@ -990,15 +975,6 @@ function closeWin(){
 function g(id){return document.getElementById(id);}
 function e(s){if(!s)return'';const d=document.createElement('div');d.appendChild(document.createTextNode(String(s)));return d.innerHTML;}
 function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-
-// ══ Глобальний блок DevTools (діє з моменту завантаження) ══
-document.addEventListener('keydown',ev=>{
-  const ck=ev.ctrlKey||ev.metaKey;
-  if(ev.key==='F12'||(ck&&ev.shiftKey&&'IJCK'.includes(ev.key.toUpperCase()))||(ck&&ev.key.toLowerCase()==='u')||(ck&&ev.key.toLowerCase()==='s')){
-    ev.preventDefault();ev.stopPropagation();
-    if(examActive)violation('DevTools','Спроба відкрити інструменти розробника.');
-  }
-},true);
 </script>
 </body>
 </html>

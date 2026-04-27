@@ -415,6 +415,8 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
   <div class="sb-sec">Налаштування</div>
   <div class="nav-item" onclick="navTo('grades')" data-page="grades"><span class="nav-icon">🎓</span><span class="nav-label">Оцінки</span></div>
   <div class="nav-item" onclick="navTo('myclasses')" data-page="myclasses"><span class="nav-icon">🏫</span><span class="nav-label">Мої класи</span></div>
+  <div class="nav-item" onclick="navTo('myparallels')" data-page="myparallels"><span class="nav-icon">🔢</span><span class="nav-label">Мої паралелі</span></div>
+  <div class="nav-item" onclick="navTo('mysubjects')" data-page="mysubjects"><span class="nav-icon">📖</span><span class="nav-label">Мої предмети</span></div>
   <div class="nav-item" onclick="navTo('security')" data-page="security"><span class="nav-icon">🔒</span><span class="nav-label">Захист</span></div>
   <div class="nav-item" onclick="navTo('settings')" data-page="settings"><span class="nav-icon">⚙️</span><span class="nav-label">Налаштування</span></div>
   <div class="sb-foot">
@@ -463,7 +465,7 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
       <div>
         <div class="card">
           <div class="card-title">📄 Тест</div>
-          <div class="fg"><label class="fl">Назва тесту</label><input type="text" id="testTitle" value="Мій тест" oninput="this._aiAutoFilled=false"></div>
+          <div class="fg"><label class="fl">Назва тесту</label><input type="text" id="testTitle" value="Мій тест"></div>
           <div class="grid2">
             <div class="fg"><label class="fl">Предмет</label><input type="text" id="testSubject" placeholder="Хімія"></div>
             <div class="fg"><label class="fl">Клас</label><input type="text" id="testClass" placeholder="7-А"></div>
@@ -473,46 +475,39 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
         <div class="card">
           <div class="card-title">📥 Імпорт питань</div>
           <div class="tab-bar">
-            <button class="tab-btn active" onclick="switchImportTab('ai')">🤖 Імпорт ШІ</button>
-            <button class="tab-btn" onclick="switchImportTab('json')">{ } Імпорт НаУрок</button>
+            <button class="tab-btn active" onclick="switchImportTab('ai')">🤖 Тест ШІ</button>
+            <button class="tab-btn" onclick="switchImportTab('json')">{ } На Урок JSON</button>
           </div>
           <div class="tab-panel" id="itab-json">
             <div class="fg"><textarea id="importJson" style="min-height:120px;font-family:monospace;font-size:.74rem;" placeholder='{"questions":[...]} або НаУрок JSON'></textarea></div>
             <div class="flex-btw"><div id="importJsonRes" style="font-size:.78rem;"></div><button class="btn btn-primary btn-sm" onclick="importJson()">📥 Імпортувати</button></div>
           </div>
           <div class="tab-panel active" id="itab-ai">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <!-- AI fields: topic, count, subject -->
+            <div class="grid2" style="gap:8px;margin-bottom:8px;">
               <div class="fg" style="margin-bottom:0;">
-                <label class="fl">Предмет</label>
-                <select id="aiSubjectSel" onchange="onAISubjectChange()">
-                  <option value="">— вибрати —</option>
-                </select>
+                <label class="fl">Тема тесту</label>
+                <input type="text" id="aiTopic" placeholder="Будова атома" oninput="onAITopicChange()">
               </div>
               <div class="fg" style="margin-bottom:0;">
-                <label class="fl">Паралель</label>
-                <select id="aiParallelSel" onchange="onAIParallelChange()">
-                  <option value="">— вибрати —</option>
-                </select>
+                <label class="fl">Кількість питань</label>
+                <input type="number" id="aiCount" placeholder="10" min="1" max="50" value="10" oninput="updateAIPromptBox()">
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 80px;gap:8px;margin-bottom:10px;">
-              <div class="fg" style="margin-bottom:0;">
-                <label class="fl">Тема</label>
-                <input type="text" id="aiTopic" placeholder="Наприклад: Хімічні реакції" oninput="onAITopicInput()">
-              </div>
-              <div class="fg" style="margin-bottom:0;">
-                <label class="fl">К-сть питань</label>
-                <input type="number" id="aiQCount" value="10" min="1" max="50" oninput="updateAIPrompt()">
-              </div>
+            <div class="fg" style="margin-bottom:8px;">
+              <label class="fl">Предмет</label>
+              <select id="aiSubjectSelect" onchange="applyAISubject()">
+                <option value="">— Оберіть предмет —</option>
+              </select>
             </div>
             <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);border-radius:9px;padding:9px 12px;margin-bottom:10px;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                 <span style="font-size:.72rem;font-weight:700;color:var(--blue);">📋 Промт для будь-якого ШІ</span>
                 <button class="btn btn-outline btn-sm" style="font-size:.7rem;padding:3px 9px;" onclick="copyAIPrompt()">📋 Скопіювати</button>
               </div>
-              <div id="aiPromptBox" style="font-size:.68rem;font-family:monospace;color:rgba(26,26,46,.6);line-height:1.6;background:#fff;border-radius:7px;padding:7px 9px;max-height:100px;overflow-y:auto;user-select:text;cursor:text;white-space:pre-wrap;"></div>
+              <div id="aiPromptBox" style="font-size:.68rem;font-family:monospace;color:rgba(26,26,46,.6);line-height:1.6;background:#fff;border-radius:7px;padding:7px 9px;max-height:90px;overflow-y:auto;user-select:text;cursor:text;white-space:pre-wrap;"></div>
             </div>
-            <div class="fg"><textarea id="importAI" style="min-height:130px;font-family:monospace;font-size:.74rem;" placeholder="Вставте відповідь ШІ сюди...&#10;&#10;?Яка столиця України?&#10;+Київ&#10;-Харків&#10;-Одеса&#10;-Дніпро"></textarea></div>
+            <div class="fg"><textarea id="importAI" style="min-height:120px;font-family:monospace;font-size:.74rem;" placeholder="Вставте відповідь ШІ сюди...&#10;&#10;?Яка столиця України?&#10;+Київ&#10;-Харків&#10;-Одеса&#10;-Дніпро"></textarea></div>
             <div class="flex-btw"><div id="importAIRes" style="font-size:.78rem;"></div><button class="btn btn-primary btn-sm" onclick="importAIText()">🔍 Розпізнати і додати</button></div>
           </div>
         </div>
@@ -660,22 +655,51 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
         <div id="parallelColorsEditor"></div>
         <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="saveParallelColors()">💾 Зберегти кольори</button>
       </div>
+    </div>
+  </div>
+
+  <!-- MY PARALLELS -->
+  <div class="page" id="page-myparallels">
+    <div class="grid2" style="align-items:start;">
       <div class="card">
         <div class="card-title">🔢 Мої паралелі</div>
-        <div class="text-sm" style="margin-bottom:12px;opacity:.7;">Паралель = номер класу, напр. <strong>7 клас</strong>, <strong>10 клас</strong>. Використовується у конструкторі та промті для ШІ.</div>
+        <div class="text-sm" style="margin-bottom:12px;opacity:.7;">Формат: <strong>7 клас</strong>, <strong>8 клас</strong>, <strong>11 клас</strong></div>
         <div id="parallelsEditor"></div>
         <div style="display:flex;gap:8px;margin-top:12px;">
-          <input type="number" id="newParallelInput" placeholder="7" min="1" max="12" style="max-width:80px;" onkeydown="if(event.key==='Enter')addParallel()">
+          <input type="text" id="newParallelInput" placeholder="7 клас" style="max-width:120px;" onkeydown="if(event.key==='Enter')addParallel()">
           <button class="btn btn-primary btn-sm" onclick="addParallel()">＋ Додати</button>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">📚 Мої предмети</div>
-        <div class="text-sm" style="margin-bottom:12px;opacity:.7;">Предмети доступні у конструкторі та промті для ШІ</div>
+        <div class="card-title">ℹ️ Про паралелі</div>
+        <div class="text-sm" style="line-height:1.85;opacity:.75;">
+          <p style="margin-bottom:7px;">Паралелі — це групи класів одного року навчання.</p>
+          <p style="margin-bottom:7px;">Наприклад: <strong>7 клас</strong> включає 7-А, 7-Б, 7-В.</p>
+          <p>Паралелі відображаються у фільтрах при запуску тесту.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY SUBJECTS -->
+  <div class="page" id="page-mysubjects">
+    <div class="grid2" style="align-items:start;">
+      <div class="card">
+        <div class="card-title">📖 Мої предмети</div>
+        <div class="text-sm" style="margin-bottom:12px;opacity:.7;">Наприклад: <strong>Хімія</strong>, <strong>Фізика</strong>, <strong>Математика</strong></div>
         <div id="subjectsEditor"></div>
         <div style="display:flex;gap:8px;margin-top:12px;">
-          <input type="text" id="newSubjectInput" placeholder="Хімія" style="flex:1;" onkeydown="if(event.key==='Enter')addSubject()">
+          <input type="text" id="newSubjectInput" placeholder="Хімія" style="max-width:160px;" onkeydown="if(event.key==='Enter')addSubject()">
           <button class="btn btn-primary btn-sm" onclick="addSubject()">＋ Додати</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">ℹ️ Використання предметів</div>
+        <div class="text-sm" style="line-height:1.85;opacity:.75;">
+          <p style="margin-bottom:7px;">Предмети автоматично з'являються у:</p>
+          <p style="margin-bottom:5px;">• Конструкторі тесту (поле «Предмет»)</p>
+          <p style="margin-bottom:5px;">• Імпорті Тест ШІ (вибір предмету)</p>
+          <p style="margin-bottom:5px;">• Фільтрах бібліотеки та результатів</p>
         </div>
       </div>
     </div>
@@ -698,9 +722,7 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
       </div>
       <div class="card">
         <div class="card-title">🔍 Аудит безпеки</div>
-        <div id="secAudit" style="font-size:.8rem;line-height:2;">
-          Завантаження…
-        </div>
+        <div id="secAudit" style="font-size:.8rem;line-height:2;">Завантаження…</div>
         <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="runSecAudit()">🔄 Перевірити зараз</button>
       </div>
       <div class="card">
@@ -769,12 +791,47 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
           </div>
         </div>
         <div class="card">
-          <div class="card-title">🌐 Де безкоштовно розмістити</div>
-          <div class="text-sm" style="line-height:1.9;">
-            <p style="margin-bottom:7px;">📦 <strong>GitHub Pages</strong> — найпростіше:<br>1. Завантажте файли на GitHub<br>2. Settings → Pages → main branch<br>Посилання: <code>username.github.io/repo</code></p>
-            <p style="margin-bottom:7px;">⚡ <strong>Netlify</strong> — перетягніть папку на netlify.com/drop<br>Посилання одразу готове!</p>
-            <p style="margin-bottom:7px;">🔥 <strong>Firebase Hosting</strong> — разом з базою:<br><code>firebase deploy --only hosting</code></p>
-            <p style="opacity:.55;font-size:.72rem;">Всі варіанти безкоштовні для освітнього використання.</p>
+          <div class="card-title">🔥 Правильна Firebase конфігурація (Rules)</div>
+          <div class="text-sm" style="line-height:1.85;margin-bottom:12px;">
+            <p style="margin-bottom:6px;">Скопіюйте та вставте ці правила у <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);">Firebase Console</a> → Realtime Database → Rules:</p>
+          </div>
+          <div style="position:relative;">
+            <pre id="fbRulesBox" style="background:var(--paper2);border-radius:9px;padding:12px 14px;font-size:.72rem;font-family:monospace;overflow-x:auto;white-space:pre;line-height:1.6;color:var(--primary);border:1px solid var(--border);">{
+  "rules": {
+    "sessions": {
+      ".read": true,
+      ".write": "auth != null",
+      "$sid": {
+        ".validate": "newData.hasChildren(['sessionId','title','status'])",
+        "participants": {
+          "$pid": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['name'])"
+          }
+        }
+      }
+    },
+    "results": {
+      ".read": "auth != null",
+      "$rid": {
+        ".write": "!data.exists() && newData.hasChildren(['sessionId','student','pct','ts']) && newData.child('pct').isNumber() && newData.child('pct').val() >= 0 && newData.child('pct').val() <= 100 && (now - newData.child('ts').val()) < 300000",
+        ".validate": "newData.child('student').isString() && newData.child('student').val().length > 0 && newData.child('student').val().length < 100"
+      }
+    },
+    "library": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "config": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}</pre>
+            <button class="btn btn-outline btn-sm" style="position:absolute;top:8px;right:8px;font-size:.7rem;" onclick="copyFbRules()">📋 Копіювати</button>
+          </div>
+          <div class="text-sm" style="margin-top:10px;line-height:1.7;opacity:.7;">
+            <p>⚠️ <strong>Важливо:</strong> результат кожного учня записується <strong>один раз</strong> (правило <code>!data.exists()</code>). Для видалення результатів через панель вчителя потрібна авторизація Firebase.</p>
           </div>
         </div>
       </div>
@@ -812,18 +869,24 @@ function initFirebase(){
         el('appWrap').classList.add('show');
         el('sbUser').textContent='👤 '+(user.email||'вчитель');
         const ced=el('currentEmailDisplay');if(ced)ced.textContent=user.email||'—';
-        // Синхронізація даних тільки після підтвердженої auth
-        syncMyClasses();
-        startListeningActiveSessions();
-        syncResultsFromFirebase(); // Firebase дані мають пріоритет
-        syncLibrary();
-        // Завантажуємо локальний кеш ТІЛЬКИ як тимчасовий fallback поки Firebase не відповів
-        if(!_resultsCache.length){
+        // _appInited запобігає повторній підписці при оновленні токена Firebase
+        if(!window._appInited){
+          window._appInited=true;
+          syncMyClasses();
+          startListeningActiveSessions();
+          syncResultsFromFirebase();
+          syncLibrary();
           try{_resultsCache=JSON.parse(localStorage.getItem('sqpro_results')||'[]');}catch{_resultsCache=[];}
+          // Sync parallels and subjects from Firebase
+          if(db){
+            db.ref('config/parallels').once('value',snap=>{const fb=snap.val();if(Array.isArray(fb)&&fb.length>0)localStorage.setItem('sqpro_parallels',JSON.stringify(fb));});
+            db.ref('config/subjects').once('value',snap=>{const fb=snap.val();if(Array.isArray(fb)&&fb.length>0)localStorage.setItem('sqpro_subjects',JSON.stringify(fb));});
+          }
+          _postAuthInit();
         }
-        if(!window._appInited){window._appInited=true;_postAuthInit();}
       } else {
         currentUser=null;
+        window._appInited=false;
         el('loginWrap').style.display='';
         el('appWrap').classList.remove('show');
         showLoginForm();
@@ -848,13 +911,7 @@ function showForgotForm(){
   setTimeout(()=>el('forgotEmail')?.focus(),80);
 }
 
-let _loginLastAttempt=0;
 async function doLogin(){
-  const now=Date.now();
-  if(now-_loginLastAttempt<3000){
-    const err=el('loginErr');err.textContent='Зачекайте кілька секунд перед наступною спробою';err.style.display='block';return;
-  }
-  _loginLastAttempt=now;
   const email=(v('loginEmail')||'').trim(), pass=v('loginPass');
   const err=el('loginErr'); err.style.display='none';
   if(!email||!pass){err.textContent='Введіть email та пароль';err.style.display='block';return;}
@@ -867,7 +924,7 @@ async function doLogin(){
     const msgs={'auth/user-not-found':'Користувача не знайдено','auth/wrong-password':'Невірний пароль',
       'auth/invalid-email':'Невірний формат email','auth/too-many-requests':'Забагато спроб. Зачекайте хвилину.',
       'auth/invalid-credential':'Невірний email або пароль'};
-    err.textContent=msgs[e.code]||('Помилка входу'); err.style.display='block'; // не розкриваємо деталі помилки
+    err.textContent=msgs[e.code]||('Помилка: '+e.message); err.style.display='block';
     el('loginPass').value='';
   }
 }
@@ -907,7 +964,7 @@ function sendResetEmail(){
     .catch(e=>toast('Помилка: '+e.message));
 }
 
-function syncAuthFromFirebase(){/* замінено Firebase Auth — не потрібно */}
+function syncAuthFromFirebase(){/* замінено Firebase Auth */}
 
 // ══ THEME ══
 function applyTheme(){
@@ -921,7 +978,7 @@ function applyTheme(){
   const isUrl=logo.startsWith('http')||logo.startsWith('/');
   if(li){if(isUrl)li.innerHTML=`<img src="${logo}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">`;else li.textContent=logo;}
   if(ll){if(isUrl)ll.innerHTML=`<img src="${logo}" style="width:48px;height:48px;object-fit:contain;border-radius:10px;">`;else ll.textContent=logo;}
-  if(lt)lt.textContent=name;
+  if(lt){const h1=lt.querySelector('h1');if(h1)h1.textContent=name;}
   if(ltt)ltt.textContent=name;
   document.title=name+' — Панель вчителя';
   let fav=document.querySelector("link[rel~='icon']");
@@ -939,6 +996,10 @@ function resetTheme(){
   document.documentElement.style.removeProperty('--primary');
   document.documentElement.style.removeProperty('--accent');
   applyTheme(); toast('Тему скинуто');
+}
+function copyFbRules(){
+  const txt=el('fbRulesBox')?.textContent||'';
+  navigator.clipboard.writeText(txt).then(()=>toast('📋 Rules скопійовано!')).catch(()=>toast('Скопіюйте вручну'));
 }
 function loadTheme(){
   try{
@@ -966,7 +1027,7 @@ function toggleMob(){const s=el('sidebar'),o=el('mobOverlay'),b=el('hamburger');
 function closeMob(){el('sidebar').classList.remove('open');el('mobOverlay').classList.remove('show');el('hamburger').classList.remove('open');}
 
 // ══ NAV ══
-const PT={dash:'Огляд',creator:'Конструктор тесту',library:'Бібліотека тестів',active:'Активні тести',results:'Результати',archive:'Архів — журнал',grades:'Система оцінювання',myclasses:'Мої класи',security:'Захист',settings:'Налаштування'};
+const PT={dash:'Огляд',creator:'Конструктор тесту',library:'Бібліотека тестів',active:'Активні тести',results:'Результати',archive:'Архів — журнал',grades:'Система оцінювання',myclasses:'Мої класи',myparallels:'Мої паралелі',mysubjects:'Мої предмети',security:'Захист',settings:'Налаштування'};
 function navTo(p){
   closeMob();
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
@@ -978,11 +1039,13 @@ function navTo(p){
   if(p==='grades')renderGrades();
   if(p==='results'){renderResultsPage();updateResFilter();}
   if(p==='archive'){renderArchivePage();}
-  if(p==='myclasses'){renderMyClasses();renderSubjectsEditor();renderParallelsEditor();}
+  if(p==='myclasses'){renderMyClasses();}
+  if(p==='myparallels'){renderMyParallels();}
+  if(p==='mysubjects'){renderMySubjects();}
   if(p==='library'){updateLibFilters();renderLib();}
   if(p==='creator')renderCreatorPanel();
   if(p==='active')renderActiveSessions();
-  if(p==='security'){renderCreatorPanel();setTimeout(runSecAudit,300);}
+  if(p==='security'){renderCreatorPanel();setTimeout(runSecAudit,400);}
 }
 
 // ══ IMPORT TABS ══
@@ -1120,47 +1183,78 @@ function clearQs(){if(!questions.length)return;if(confirm('Очистити вс
 
 // ══ PARSERS ══
 function buildAIPrompt(){
-  const topic=(el('aiTopic')?.value||'').trim();
-  const subj=(el('aiSubjectSel')?.value||'').trim();
-  const par=(el('aiParallelSel')?.value||'').trim();
-  const n=parseInt(el('aiQCount')?.value)||10;
-  const topicPart=topic?`"${topic}"`:'[вкажіть тему]';
-  const subjPart=subj?` з предмету "${subj}"`:'';
-  const clsPart=par?` для ${par}`:'';
-  return `Створи тест з ${n} питань${subjPart} на тему ${topicPart}${clsPart}.
+  const topic=(el('aiTopic')?.value||'').trim()||'[ТЕМА]';
+  const count=parseInt(el('aiCount')?.value)||10;
+  const subject=(el('aiSubjectSelect')?.value||'').trim();
+  const subjectLine=subject?`\nПредмет: ${subject}`:'';
+  return `Створи тест з ${count} питань на тему "${topic}".${subjectLine}
 
-ВАЖЛИВО — формат спецсимволів:
-- Математичні символи: степені через Unicode (² ³ ⁴), дроби (½ ⅓ ¼), знаки (≤ ≥ ≠ ≈ √ ∞ π ∑ ∫).
-  Приклад: x² + y² = z², H₂SO₄, CO₂, t = 20°C
-- Хімічні формули: індекси як нижні Unicode (₂ ₃ ₄ ₅ ₆), стрілки (→ ⇌ ↑ ↓).
-  Приклад: H₂O, NaCl, CaCO₃ → CaO + CO₂↑
-- Одиниці вимірювання: м/с², кДж/моль, °C — звичайним текстом з Unicode.
-- НЕ використовуй HTML-теги, LaTeX або Markdown.
+ВАЖЛИВО: виводь ТІЛЬКИ питання і відповіді у форматі нижче — без будь-яких пояснень, нумерацій, вступу чи підсумку.
 
-Виводь ТІЛЬКИ питання і відповіді у форматі:
+Математичні та хімічні символи — використовуй Unicode: степені (x² x³ xⁿ), індекси (H₂O CO₂ H₂SO₄), корені (√ ∛), стрілки (→ ⇌ ←), грецькі літери (α β γ δ λ π), знаки (≠ ≤ ≥ ± × ÷ °).
 
+Формат кожного питання:
 ?Текст питання
 +Правильна відповідь
 -Неправильна відповідь
 -Неправильна відповідь
+-Неправильна відповідь
 
-?Питання [multiple] — кілька правильних
-+Правильна 1
-+Правильна 2
--Неправильна
+Для питань з кількома правильними відповідями:
+?Текст питання [multiple]
++Правильна відповідь 1
++Правильна відповідь 2
+-Неправильна відповідь
 
-? = питання, + = правильна, - = неправильна
-Без нумерації, вступу, пояснень.`;
+Правила:
+- ? на початку рядка = текст питання
+- + на початку рядка = правильна відповідь
+- - на початку рядка = неправильна відповідь
+- Порожній рядок між питаннями
+- Без жодного іншого тексту`;
 }
 
-function updateAIPrompt(){
+function updateAIPromptBox(){
   const box=el('aiPromptBox');
   if(box)box.textContent=buildAIPrompt();
+}
+
+function applyAISubject(){
+  const subj=el('aiSubjectSelect')?.value||'';
+  if(subj){
+    const tf=el('testSubject');
+    if(tf)tf.value=subj;
+    toast('Предмет «'+subj+'» встановлено');
+  }
+  updateAIPromptBox();
+}
+
+function updateAISubjectSelect(){
+  const sel=el('aiSubjectSelect');
+  if(!sel)return;
+  const subjects=getMySubjects();
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— Оберіть предмет —</option>'+subjects.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(subjects.includes(prev))sel.value=prev;
+  updateAIPromptBox();
 }
 
 function copyAIPrompt(){
   const prompt=buildAIPrompt();
   navigator.clipboard.writeText(prompt).then(()=>toast('📋 Промт скопійовано!')).catch(()=>toast('Скопіюйте вручну'));
+}
+
+// Also update title when topic changes
+function onAITopicChange(){
+  const topic=(el('aiTopic')?.value||'').trim();
+  if(topic){
+    const tf=el('testTitle');
+    if(tf&&(tf.value===''||tf.value==='Мій тест'||tf.value===tf.dataset.lastAI||'')){{
+      tf.value=topic;
+      tf.dataset.lastAI=topic;
+    }}
+  }
+  updateAIPromptBox();
 }
 
 function importAIText(){
@@ -1261,7 +1355,6 @@ function parseNaurokText(text){
 function importJson(){
   const raw=v('importJson').trim();
   if(!raw){toast('Вставте JSON');return;}
-  if(raw.length>2*1024*1024){el('importJsonRes').innerHTML='<span style="color:var(--accent)">❌ JSON занадто великий (макс. 2MB)</span>';return;}
   let data;try{data=JSON.parse(raw);}catch{el('importJsonRes').innerHTML='<span style="color:var(--accent)">❌ Невалідний JSON</span>';return;}
   let qs=[];
   // Naurok format
@@ -1394,44 +1487,39 @@ function getLib(){return _libCache;}
 
 function setLib(arr){
   _libCache=arr;
-  // Always save to localStorage as fallback
   localStorage.setItem('sqpro_lib',JSON.stringify(arr));
-  // Save to Firebase if available
   if(db){
+    // Стабільні ключі на основі id — без дублювання при повторних збереженнях
     const obj={};
-    arr.forEach((t,i)=>{obj['t_'+i+'_'+(t.id||i)]=t;});
+    arr.forEach(t=>{obj['t_'+(t.id||Date.now())]=t;});
     db.ref('library').set(obj).catch(()=>{});
   }
 }
 
 function syncLibrary(){
-  // Try Firebase first
-  if(db){
-    db.ref('library').on('value',snap=>{
-      const data=snap.val()||{};
-      const arr=Object.values(data).sort((a,b)=>(b.id||0)-(a.id||0));
-      if(arr.length>0){
-        _libCache=arr;
-        localStorage.setItem('sqpro_lib',JSON.stringify(arr));
-      } else {
-        // Try localStorage
-        try{_libCache=JSON.parse(localStorage.getItem('sqpro_lib')||'[]');}catch{_libCache=[];}
-        // If localStorage has data, push it to Firebase
-        if(_libCache.length>0) setLib(_libCache);
-      }
-      updateLibFilters(); renderLib(); renderDash();
-    });
-  } else {
-    // Firebase not configured — use localStorage only
-    try{_libCache=JSON.parse(localStorage.getItem('sqpro_lib')||'[]');}catch{_libCache=[];}
+  // Завжди спочатку завантажуємо з localStorage (миттєво)
+  try{_libCache=JSON.parse(localStorage.getItem('sqpro_lib')||'[]');}catch{_libCache=[];}
+  updateLibFilters(); renderLib(); renderDash();
+
+  // Потім синхронізуємо з Firebase
+  if(!db)return;
+  db.ref('library').on('value',snap=>{
+    const data=snap.val()||{};
+    const arr=Object.values(data).sort((a,b)=>(b.id||0)-(a.id||0));
+    if(arr.length>0){
+      _libCache=arr;
+      localStorage.setItem('sqpro_lib',JSON.stringify(arr));
+    } else if(_libCache.length>0){
+      setLib(_libCache);
+    }
     updateLibFilters(); renderLib(); renderDash();
-  }
+  },(err)=>{
+    console.warn('Library sync error:',err.message);
+  });
 }
 
 function saveToLib(){
   if(!questions.length){toast('⚠️ Немає питань');return;}
-  if(questions.length>200){toast('⚠️ Максимум 200 питань у тесті');return;}
-  if(_libCache.length>=200){toast('⚠️ Бібліотека переповнена (макс. 200 тестів). Видаліть старі.');return;}
   const title=v('testTitle')||'Тест',time=parseInt(v('testTime'))||15,subject=v('testSubject')||'',cls=v('testClass')||'';
   const lib=[..._libCache];
   const ex=lib.findIndex(t=>t.title===title);
@@ -1519,24 +1607,6 @@ function exportTestJSON(i){
   toast('📥 Тест експортовано як JSON');
 }
 
-// ══ КРИПТО — AES-GCM 256 ══
-// Питання шифруються перед збереженням у Firebase.
-// Ключ передається ТІЛЬКИ в URL учню — в базі його немає.
-async function _aesKey(raw){
-  const seed=new Uint8Array(32);
-  seed.set(new TextEncoder().encode(raw).slice(0,32));
-  return crypto.subtle.importKey('raw',seed,{name:'AES-GCM'},false,['encrypt','decrypt']);
-}
-async function encryptForSession(obj,keyRaw){
-  const key=await _aesKey(keyRaw);
-  const iv=crypto.getRandomValues(new Uint8Array(12));
-  const cipher=await crypto.subtle.encrypt(
-    {name:'AES-GCM',iv},key,
-    new TextEncoder().encode(JSON.stringify(obj))
-  );
-  return{iv:btoa(String.fromCharCode(...iv)),d:btoa(String.fromCharCode(...new Uint8Array(cipher)))};
-}
-
 // ══ LAUNCH ══
 let activeSessionId=null;
 
@@ -1556,31 +1626,44 @@ function openLaunchDialog(){
 // Step 2: teacher clicked "Зафіксувати клас і запустити"
 function confirmLaunchClass(){
   const chosenClass=v('launchClassSelect')||'';
-  // Show badge
   const badge=el('launchClassBadgeText');
   if(badge) badge.textContent=chosenClass||'— не вказано —';
 
-  // Hide step1, show step2
   el('launchStep1').style.display='none';
   el('launchStep2').style.display='block';
 
-  // Now actually launch
-  _doLaunch(chosenClass);
+  // _doLaunch тепер async — не блокуємо UI
+  _doLaunch(chosenClass).catch(e=>{
+    toast('Помилка запуску: '+e.message);
+    el('launchStep1').style.display='block';
+    el('launchStep2').style.display='none';
+  });
+}
+
+// ══ КРИПТО ══
+async function _aesKey(raw){
+  const seed=new TextEncoder().encode((raw+'00000000000000000000000000000000').slice(0,32));
+  return crypto.subtle.importKey('raw',seed,{name:'AES-GCM'},false,['encrypt','decrypt']);
+}
+async function encryptForSession(obj,keyRaw){
+  const key=await _aesKey(keyRaw);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj)));
+  return{iv:btoa(String.fromCharCode(...iv)),d:btoa(String.fromCharCode(...new Uint8Array(cipher)))};
 }
 
 async function _doLaunch(launchClass){
-  const sessionId='sess_'+crypto.randomUUID().replace(/-/g,'');
+  const sessionId='sess_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
   const timerMode=v('timerMode')||'total';
   const testTime=parseInt(v('testTime'))||15;
   const autoStop=getSec('finishOnTime');
   const startedAt=new Date();
   const stopAt=autoStop?new Date(startedAt.getTime()+(testTime+5)*60000):null;
 
-  // Генеруємо ключ шифрування — 32 випадкові символи
-  // Він буде ТІЛЬКИ в URL учня і в пам'яті вчителя, але НЕ в Firebase
-  const encKey=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
+  // Генеруємо ключ шифрування — тільки в URL, не в Firebase
+  const encKey=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
 
-  // Шифруємо питання (включно з correctIndices)
+  // Шифруємо питання перед збереженням
   let encQ=null;
   try{
     encQ=await encryptForSession(JSON.parse(JSON.stringify(questions)),encKey);
@@ -1597,8 +1680,8 @@ async function _doLaunch(launchClass){
     subject:v('testSubject')||'',
     cls:v('testClass')||'',
     launchClass:launchClass,
-    // questions НЕ зберігаємо відкрито — тільки зашифровані
-    encQ,                              // зашифровані питання
+    encQ,                    // зашифровані питання
+    // questions НЕ зберігаємо відкрито
     secSettings:{tab:getSec('s-tab'),blur:getSec('s-blur'),ctx:getSec('s-ctx'),copy:getSec('s-copy'),prtsc:getSec('s-prtsc'),wm:getSec('s-wm'),shuffle:getSec('s-shuffle'),maxviol:getSecVal('s-maxviol')},
     grades:getGrades().map(g=>({...g})),
     finishOnAll:false,
@@ -1616,16 +1699,19 @@ async function _doLaunch(launchClass){
     startListeningActiveSessions();
     if(payload.finishOnAll){listenForCompletion(sessionId,payload);}
   } else {
-    // Fallback localStorage — зберігаємо з незашифрованими питаннями для локального тесту
+    // Fallback localStorage — з незашифрованими питаннями для локального тесту
     const localPayload={...payload,questions:JSON.parse(JSON.stringify(questions))};
     localStorage.setItem('sqpro_exam_payload',JSON.stringify(localPayload));
     el('stopSessionBtn').style.display='none';
   }
 
-  // Build exam URL — ключ шифрування йде в URL параметр &k=
+  // Build exam URL — ключ тільки в URL параметрі &k=
   const baseUrl=typeof APP_URL!=='undefined'?APP_URL:(window.location.href.replace(/[^/]*$/, ''));
   const examUrl=baseUrl+'exam.html?session='+sessionId+'&k='+encKey;
   el('examLink').value=examUrl;
+  // Store for copy button in active sessions panel
+  if(!window._sessionLinks)window._sessionLinks={};
+  window._sessionLinks[sessionId]=examUrl;
 
   // QR
   const qrDiv=el('qrWrap'); qrDiv.innerHTML='';
@@ -1634,11 +1720,13 @@ async function _doLaunch(launchClass){
 
   el('launchStatus').textContent='✅ Тест запущено. Надішліть посилання учням.';
 
+  // Show auto-stop time
   if(payload.stopAt){
     const stopTime=new Date(payload.stopAt);
     const hh=String(stopTime.getHours()).padStart(2,'0');
     const mm=String(stopTime.getMinutes()).padStart(2,'0');
-    const autoDiv=el('launchAutoStop'),stopTimeEl=el('launchStopTime');
+    const autoDiv=el('launchAutoStop');
+    const stopTimeEl=el('launchStopTime');
     if(autoDiv)autoDiv.style.display='block';
     if(stopTimeEl)stopTimeEl.textContent=hh+':'+mm;
     const msUntilStop=stopTime.getTime()-Date.now();
@@ -1658,6 +1746,21 @@ async function _doLaunch(launchClass){
 function copyLink(){
   const link=el('examLink').value;
   navigator.clipboard.writeText(link).then(()=>toast('📋 Посилання скопійовано!')).catch(()=>{el('examLink').select();document.execCommand('copy');toast('📋 Скопійовано');});
+}
+
+function copySessionLink(sid){
+  const link=window._sessionLinks?.[sid];
+  if(link){
+    navigator.clipboard.writeText(link).then(()=>toast('📋 Посилання скопійовано!')).catch(()=>toast('Не вдалось скопіювати'));
+  } else {
+    // Try to reconstruct from session data
+    const s=_lastActiveSnap?.[sid];
+    if(s){
+      toast('⚠️ Посилання недоступне — ключ шифрування зберігається тільки при запуску');
+    } else {
+      toast('⚠️ Сесія не знайдена');
+    }
+  }
 }
 
 function stopActiveSession(){
@@ -1686,37 +1789,35 @@ function listenForCompletion(sessionId,payload){
 }
 
 // ══ LIVE MONITORING ══
+let _lastActiveSnap={};
 function startListeningActiveSessions(){
   if(!db)return;
-  // ══ Автоматичне закриття сесій старших за 24 години ══
-  db.ref('sessions').once('value',snap=>{
-    const all=snap.val()||{};
-    const cutoff=Date.now()-24*60*60*1000;
-    Object.entries(all).forEach(([sid,s])=>{
-      if(s.status==='active'&&s.startedAt&&new Date(s.startedAt).getTime()<cutoff){
-        db.ref('sessions/'+sid+'/status').set('expired');
-      }
-    });
-  });
   db.ref('sessions').on('value',snap=>{
     const all=snap.val()||{};
+    _lastActiveSnap=all;
+    const cutoff=Date.now()-24*60*60*1000;
+    // Автозакриття сесій >24год
+    if(currentUser){
+      Object.entries(all).forEach(([sid,s])=>{
+        if(s.status==='active'&&s.startedAt&&new Date(s.startedAt).getTime()<cutoff){
+          db.ref('sessions/'+sid+'/status').set('expired').catch(()=>{});
+        }
+      });
+    }
     const count=Object.values(all).filter(s=>s.status==='active').length;
     const badge=el('activeBadge');
-    badge.textContent=count;
-    badge.style.display=count>0?'inline':'none';
-    el('dActive').textContent=count;
+    if(badge){badge.textContent=count;badge.style.display=count>0?'inline':'none';}
+    const dActive=el('dActive');if(dActive)dActive.textContent=count;
     if(document.querySelector('[data-page="active"].active'))renderActiveSessionsFromSnap(all);
+    if(document.querySelector('[data-page="dash"].active'))renderDashLiveProgress();
   });
 }
 
-let _lastActiveSnap={};
 function renderActiveSessions(){
   const container=el('activeList');if(!container)return;
   if(!db){container.innerHTML='<div class="firebase-notice">⚠️ Firebase не налаштовано</div>';return;}
-  db.ref('sessions').once('value',snap=>{
-    _lastActiveSnap=snap.val()||{};
-    renderActiveSessionsFromSnap(_lastActiveSnap);
-  });
+  // Використовуємо кешований снепшот — без зайвого запиту до Firebase
+  renderActiveSessionsFromSnap(_lastActiveSnap);
 }
 
 function renderActiveSessionsFromSnap(sessions){
@@ -1755,6 +1856,7 @@ function renderActiveSessionsFromSnap(sessions){
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;">
           ${isActive?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();stopSession('${sid}')">⏹ Стоп</button>`:''}
+          <button class="btn btn-outline btn-sm" style="color:var(--blue);border-color:rgba(37,99,235,.3);" onclick="event.stopPropagation();copySessionLink('${sid}')" title="Копіювати посилання">📋 Лінк</button>
           <button class="btn btn-outline btn-sm" style="color:var(--accent);" onclick="event.stopPropagation();deleteSession('${sid}')" title="Видалити з активних">🗑</button>
         </div>
       </div>
@@ -1779,20 +1881,23 @@ function renderActiveSessionsFromSnap(sessions){
 function toggleActiveDetail(sid){el('ld-'+sid)?.classList.toggle('open');}
 
 function stopSession(sid){
-  if(!db||!currentUser)return;
-  if(typeof sid!=='string'||!/^sess_[a-f0-9]+$/.test(sid)){toast('⚠️ Невалідний ID сесії');return;}
+  if(!db)return;
   if(!confirm('Зупинити тест для всіх учнів?'))return;
   db.ref('sessions/'+sid+'/status').set('stopped');
   toast('Тест зупинено для всіх учнів');
 }
 
 function deleteSession(sid){
-  if(!db||!currentUser)return;
+  if(!db)return;
   if(!confirm('Видалити цей тест з активних? Результати учнів залишаться.'))return;
-  // Перевіряємо що sid — валідний рядок (не ін'єкція)
-  if(typeof sid!=='string'||!/^sess_[a-f0-9]+$/.test(sid)){toast('⚠️ Невалідний ID сесії');return;}
-  db.ref('sessions/'+sid).remove();
-  toast('Тест видалено з активних');
+  db.ref('sessions/'+sid).remove()
+    .then(()=>{toast('Тест видалено з активних');})
+    .catch(()=>{
+      // Fallback: set status to deleted if remove is blocked by rules
+      db.ref('sessions/'+sid+'/status').set('deleted')
+        .then(()=>toast('Тест видалено з активних'))
+        .catch(err=>toast('Помилка видалення: '+err.message));
+    });
 }
 
 // ══ RESULTS — читаємо з Firebase ══
@@ -1828,10 +1933,7 @@ function syncResultsFromFirebase(){
 }
 
 function clearResults(){
-  if(!currentUser){toast('⚠️ Необхідна авторизація');return;}
   if(!confirm('Очистити ВСІ результати? Дія незворотна.'))return;
-  // Подвійне підтвердження для критичної операції
-  if(!confirm('ОСТАТОЧНЕ ПІДТВЕРДЖЕННЯ: видалити всі результати?'))return;
   _resultsCache=[];
   localStorage.removeItem('sqpro_results');
   if(db){
@@ -1931,6 +2033,7 @@ function renderResultsPage(){
         <div class="res-badge" style="background:${grade.c};">${grade.l}</div>
         <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportSessionCSV('${sid}')" title="CSV">⬇CSV</button>
         <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="event.stopPropagation();exportSessionPDF('${sid}')" title="PDF">📄PDF</button>
+        <button class="btn btn-sm ${isJournaled?'btn-green':'btn-outline'}" style="flex-shrink:0;font-size:.72rem;${isJournaled?'':'color:var(--green);border-color:rgba(22,163,74,.3);'}" onclick="event.stopPropagation();quickToggleJournal('${sid}')" title="${isJournaled?'В журналі':'Перенести в журнал'}" id="jbtn-${sid.replace(/\W/g,'_')}">${isJournaled?'✓ Журнал':'📋 Журнал'}</button>
         <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation();clearSessionResults('${sid}')" title="Видалити">🗑</button>
         <span style="font-size:.75rem;color:rgba(26,26,46,.35);">▼</span>
       </div>
@@ -1960,6 +2063,28 @@ function toggleResDetail(sid){el('rd-'+sid)?.classList.toggle('open');}
 
 // ── JOURNAL TRANSFER CHECKBOXES ──
 function getJournalState(){try{return JSON.parse(localStorage.getItem('sqpro_journal')||'{}');}catch{return{};}}
+function quickToggleJournal(sid){
+  const st=getJournalState();
+  const newVal=!st[sid];
+  st[sid]=newVal;
+  localStorage.setItem('sqpro_journal',JSON.stringify(st));
+  const card=document.getElementById('sc-'+sid.replace(/\W/g,'_'));
+  if(card){
+    if(newVal)card.classList.add('session-journaled');
+    else card.classList.remove('session-journaled');
+  }
+  const cb=document.getElementById('jcb-'+sid.replace(/\W/g,'_'));
+  if(cb)cb.checked=newVal;
+  const jbtn=document.getElementById('jbtn-'+sid.replace(/\W/g,'_'));
+  if(jbtn){
+    jbtn.textContent=newVal?'✓ Журнал':'📋 Журнал';
+    jbtn.className='btn btn-sm '+(newVal?'btn-green':'btn-outline');
+    jbtn.style.cssText='flex-shrink:0;font-size:.72rem;'+(newVal?'':'color:var(--green);border-color:rgba(22,163,74,.3);');
+  }
+  updateArchiveBadge();
+  if(document.querySelector('[data-page="archive"].active'))renderArchivePage();
+  toast(newVal?'✓ Перенесено в журнал':'↩ Повернуто до результатів');
+}
 function toggleJournal(sid,cb){
   const st=getJournalState();
   st[sid]=cb.checked;
@@ -2007,55 +2132,58 @@ function sortResSession(sid,col){
   const tb=el('rtb-'+sid);if(tb)tb.innerHTML=renderResRows(recs);
 }
 function renderResRows(records){
-  // Групуємо fingerprints щоб знайти дублі пристроїв
   const fpMap={};
-  records.forEach(r=>{
-    if(r._fp){
-      const key=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');
-      if(!fpMap[key])fpMap[key]=[];
-      fpMap[key].push(r.student);
-    }
-  });
-  return records.map(r=>{
+  records.forEach(r=>{if(r._fp){const key=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');if(!fpMap[key])fpMap[key]=[];fpMap[key].push(r.student);}});
+  return records.map((r,idx)=>{
     const g=gradeByPct(r.pct);
-    // Перевіряємо підозрілі ознаки
     const warnings=[];
-    if(r._fp){
-      const key=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');
-      const dupes=fpMap[key].filter(n=>n!==r.student);
-      if(dupes.length>0)warnings.push('Той самий пристрій: '+dupes.join(', '));
-    }
-    if(!r._sig)warnings.push('Немає підпису');
-    const warnHtml=warnings.length?`<span title="${warnings.join('\n')}" style="color:#f59e0b;cursor:help;font-size:.85rem;">⚠️</span>`:'';
+    if(r._fp){const key=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');const dupes=fpMap[key].filter(n=>n!==r.student);if(dupes.length>0)warnings.push('Той самий пристрій: '+dupes.join(', '));}
+    if(!r._sig)warnings.push('Немає підпису результату');
+    if(r._timing&&r._timing.fastCount>0){const fp=Math.round(r._timing.fastCount/(r.answersSnapshot?.length||1)*100);if(fp>30)warnings.push('Підозрілий час: '+r._timing.fastCount+' відп < 1.5с');}
+    const warn=warnings.length?`<span title="${warnings.join('\n')}" style="color:#f59e0b;cursor:help;">⚠️</span>`:'';
+    const ri=r._ri!==undefined?r._ri:idx;
     return`<tr>
-    <td><strong>${r.student}</strong> ${warnHtml}</td>
+    <td><strong>${r.student}</strong> ${warn}</td>
     <td class="text-sm">${r.cls||'—'}</td>
     <td class="text-mono">${r.pct}%</td>
     <td><span class="gspan" style="background:${g.c}">${g.l}</span></td>
     <td>${r.violations>0?`<span class="tag tag-r">${r.violations}</span>`:'<span class="tag tag-g">0</span>'}</td>
-    <td style="display:flex;gap:4px;">${r.answersSnapshot?`<button class="btn btn-outline btn-sm" onclick="openAnsModal(${r._ri})">👁</button>`:''}<button class="btn btn-danger btn-sm" onclick="delResult(${r._ri})">✕</button></td>
+    <td style="display:flex;gap:4px;">${r.answersSnapshot?`<button class="btn btn-outline btn-sm" onclick="openAnsModal(${ri})">👁</button>`:''}<button class="btn btn-danger btn-sm" onclick="delResult(${ri})">✕</button></td>
   </tr>`;}).join('');
 }
 function openAnsModal(ri){
   const rs=getResults(),r=rs[ri];if(!r||!r.answersSnapshot)return;
+  const times=r._timing?.times||[];
   el('ansModalTitle').textContent=r.student+' · '+r.test;
-  el('ansModalContent').innerHTML=r.answersSnapshot.map((q,i)=>{
+  const timingHtml=r._timing?`<div style="background:var(--paper2);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:.76rem;display:flex;gap:16px;flex-wrap:wrap;">
+    <span>⏱ Середній час: <strong>${(r._timing.avg/1000).toFixed(1)}с</strong></span>
+    <span>${r._timing.fastCount>0?`⚠️ Швидких: <strong style="color:var(--accent)">${r._timing.fastCount}</strong>`:'✅ Час нормальний'}</span>
+  </div>`:'';
+  el('ansModalContent').innerHTML=timingHtml+r.answersSnapshot.map((q,i)=>{
     const corr=q.correctIndices||[0],given=q.given||[];
     const ok=q.isMultiple?(given.length===corr.length&&corr.every(c=>given.includes(c))):(given[0]===corr[0]);
-    const ct=corr.map(c=>q.options[c]).join(', '),gt=given.map(g=>q.options[g]).join(', ')||'(не відповів)';
-    return`<div class="ans-item"><div class="ans-q">${i+1}. ${q.text}</div><div class="${ok?'ans-ok':'ans-no'}">${ok?'✓ '+gt:'✗ '+gt+' | Правильно: '+ct}</div></div>`;
+    const ct=corr.map(c=>q.options[c]).join(', ');
+    const gt=given.map(g=>q.options[g]).join(', ')||'(не відповів)';
+    const t=times[i];
+    const tLabel=t?`<span style="margin-left:6px;font-size:.68rem;color:${t<1500?'var(--accent)':'rgba(26,26,46,.35)'};">${(t/1000).toFixed(1)}с${t<1500?' ⚡':''}</span>`:'';
+    return`<div class="ans-item"><div class="ans-q">${i+1}. ${q.text}${tLabel}</div><div class="${ok?'ans-ok':'ans-no'}">${ok?'✓ '+gt:'✗ '+gt+' | Правильно: '+ct}</div></div>`;
   }).join('');
   el('ansModal').classList.add('show');
 }
 function delResult(i){
   const r=_resultsCache[i];
-  if(!r)return;
+  if(!r){toast('Помилка: результат не знайдено');return;}
+  if(!confirm('Видалити результат учня "'+r.student+'"?'))return;
   if(db&&r._fbKey){
-    db.ref('results/'+r._fbKey).remove();
-    // Firebase onValue will update other devices automatically
+    db.ref('results/'+r._fbKey).remove()
+      .then(()=>toast('Результат видалено'))
+      .catch(err=>toast('Помилка видалення: '+err.message));
+  } else {
+    toast('Результат видалено локально');
   }
   _resultsCache.splice(i,1);
   localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache));
+
   renderResultsPage(); updateResFilter(); renderDash();
 }
 function exportCSV(){
@@ -2211,7 +2339,6 @@ function syncMyClasses(){
     if(Array.isArray(fb)&&fb.length>0){
       localStorage.setItem('sqpro_classes',JSON.stringify(fb));
     }
-    updateAIClassSelects();
   });
 }
 function renderMyClasses(){
@@ -2228,10 +2355,6 @@ function renderMyClasses(){
     </div>`;
   }).join('');
   renderParallelColorsEditor();
-  renderSubjectsEditor();
-  renderParallelsEditor();
-  updateAISubjectSelects();
-  updateAIParallelSelects();
 }
 
 function renderParallelColorsEditor(){
@@ -2293,7 +2416,6 @@ function addClass(){
   renderMyClasses();
   updateLaunchClassDropdown();
   updateResClassFilter();
-  updateAIClassSelects();
   inp.value=''; inp.focus();
   toast('Клас '+val+' додано');
 }
@@ -2304,13 +2426,50 @@ function delClass(i){
   renderMyClasses();
   updateLaunchClassDropdown();
   updateResClassFilter();
-  updateAIClassSelects();
+}
+
+// ══ MY PARALLELS ══
+function getMyParallels(){try{return JSON.parse(localStorage.getItem('sqpro_parallels')||'[]');}catch{return[];}}
+function setMyParallels(arr){
+  localStorage.setItem('sqpro_parallels',JSON.stringify(arr));
+  if(db)db.ref('config/parallels').set(arr).catch(()=>{});
+}
+function renderMyParallels(){
+  const parallels=getMyParallels();
+  const ed=el('parallelsEditor');
+  if(!ed)return;
+  if(!parallels.length){ed.innerHTML='<div class="text-sm" style="padding:10px 0;opacity:.5;">Паралелей ще немає. Додайте першу.</div>';return;}
+  ed.innerHTML=parallels.map((p,i)=>{
+    const num=p.match(/\d+/)?.[0]||'';
+    const cc=PARALLEL_COLORS[num]||'#64748b';
+    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="width:32px;height:32px;border-radius:8px;background:${cc};display:flex;align-items:center;justify-content:center;color:#fff;font-size:.9rem;font-weight:800;flex-shrink:0;">${num||'?'}</div>
+      <span style="flex:1;font-weight:600;font-size:.88rem;">${p}</span>
+      <button class="btn btn-danger btn-sm" onclick="delParallel(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+function addParallel(){
+  const inp=el('newParallelInput');
+  const val=(inp.value||'').trim();
+  if(!val){inp.focus();return;}
+  const parallels=getMyParallels();
+  if(parallels.includes(val)){toast('Паралель вже є');inp.value='';return;}
+  parallels.push(val);
+  setMyParallels(parallels);
+  renderMyParallels();
+  inp.value=''; inp.focus();
+  toast('Паралель «'+val+'» додано');
+}
+function delParallel(i){
+  const parallels=getMyParallels();
+  parallels.splice(i,1);
+  setMyParallels(parallels);
+  renderMyParallels();
 }
 
 // ══ MY SUBJECTS ══
-function getMySubjects(){
-  try{return JSON.parse(localStorage.getItem('sqpro_subjects')||'[]');}catch{return[];}
-}
+function getMySubjects(){try{return JSON.parse(localStorage.getItem('sqpro_subjects')||'[]');}catch{return[];}}
 function setMySubjects(arr){
   localStorage.setItem('sqpro_subjects',JSON.stringify(arr));
   if(db)db.ref('config/subjects').set(arr).catch(()=>{});
@@ -2324,18 +2483,20 @@ function syncMySubjects(){
     }
   });
 }
-function renderSubjectsEditor(){
+function renderMySubjects(){
   const subjects=getMySubjects();
   const ed=el('subjectsEditor');
   if(!ed)return;
   if(!subjects.length){ed.innerHTML='<div class="text-sm" style="padding:10px 0;opacity:.5;">Предметів ще немає. Додайте перший.</div>';return;}
-  ed.innerHTML=subjects.map((s,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
-      <div style="width:32px;height:32px;border-radius:8px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem;font-weight:800;flex-shrink:0;">📖</div>
+  const icons={'Хімія':'⚗️','Фізика':'⚡','Математика':'📐','Біологія':'🌿','Географія':'🌍','Історія':'📜','Інформатика':'💻','Англійська':'🇬🇧','Українська':'🇺🇦','Музика':'🎵','Фізкультура':'⚽'};
+  ed.innerHTML=subjects.map((s,i)=>{
+    const icon=icons[s]||'📖';
+    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:1.2rem;width:32px;text-align:center;">${icon}</span>
       <span style="flex:1;font-weight:600;font-size:.88rem;">${s}</span>
       <button class="btn btn-danger btn-sm" onclick="delSubject(${i})">✕</button>
-    </div>`).join('');
-  updateAISubjectSelects();
+    </div>`;
+  }).join('');
 }
 function addSubject(){
   const inp=el('newSubjectInput');
@@ -2345,120 +2506,22 @@ function addSubject(){
   if(subjects.includes(val)){toast('Предмет вже є');inp.value='';return;}
   subjects.push(val);
   setMySubjects(subjects);
-  renderSubjectsEditor();
+  renderMySubjects();
+  updateSubjectDropdowns();
   inp.value=''; inp.focus();
-  toast('Предмет "'+val+'" додано');
+  toast('Предмет «'+val+'» додано');
 }
 function delSubject(i){
   const subjects=getMySubjects();
   subjects.splice(i,1);
   setMySubjects(subjects);
-  renderSubjectsEditor();
+  renderMySubjects();
+  updateSubjectDropdowns();
 }
-function updateAISubjectSelects(){
-  const subjects=getMySubjects();
-  const sel=el('aiSubjectSel');
-  if(!sel)return;
-  const prev=sel.value;
-  sel.innerHTML='<option value="">— вибрати —</option>'+subjects.map(s=>`<option value="${s}">${s}</option>`).join('');
-  if(subjects.includes(prev))sel.value=prev;
-  updateAIPrompt();
+function updateSubjectDropdowns(){
+  // Update subject field in creator if it's a select (future) - now just syncs AI import
+  updateAISubjectSelect();
 }
-
-function onAITopicInput(){
-  const topic=(el('aiTopic')?.value||'').trim();
-  const titleField=el('testTitle');
-  if(titleField){
-    const cur=titleField.value;
-    const isDefault=cur===''||cur==='Мій тест';
-    if(isDefault||titleField._aiAutoFilled){
-      titleField.value=topic||'Мій тест';
-      titleField._aiAutoFilled=!!topic;
-    }
-  }
-  updateAIPrompt();
-}
-
-// ══ AUTO-FILL TOP FORM from AI selects ══
-function onAISubjectChange(){
-  const subj=el('aiSubjectSel')?.value||'';
-  if(subj){const f=el('testSubject');if(f)f.value=subj;}
-  updateAIPrompt();
-}
-function onAIParallelChange(){
-  const par=el('aiParallelSel')?.value||''; // e.g. "7 клас"
-  if(par){
-    const f=el('testClass');
-    if(f)f.value=par;
-  }
-  updateAIPrompt();
-}
-
-// ══ MY PARALLELS ══
-function getMyParallels(){
-  try{return JSON.parse(localStorage.getItem('sqpro_parallels')||'[]');}catch{return[];}
-}
-function setMyParallels(arr){
-  localStorage.setItem('sqpro_parallels',JSON.stringify(arr));
-  if(db)db.ref('config/parallels').set(arr).catch(()=>{});
-}
-function syncMyParallels(){
-  if(!db)return;
-  db.ref('config/parallels').once('value',snap=>{
-    const fb=snap.val();
-    if(Array.isArray(fb)&&fb.length>0){
-      localStorage.setItem('sqpro_parallels',JSON.stringify(fb));
-    }
-    updateAIParallelSelects();
-  });
-}
-function renderParallelsEditor(){
-  const parallels=getMyParallels();
-  const ed=el('parallelsEditor');
-  if(!ed)return;
-  if(!parallels.length){ed.innerHTML='<div class="text-sm" style="padding:10px 0;opacity:.5;">Паралелей ще немає. Додайте першу.</div>';return;}
-  ed.innerHTML=parallels.map((p,i)=>{
-    const num=String(p).match(/\d+/)?.[0]||p;
-    const bg=PARALLEL_COLORS[num]||'#64748b';
-    return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
-      <div style="width:32px;height:32px;border-radius:8px;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem;font-weight:800;flex-shrink:0;">${num}</div>
-      <span style="flex:1;font-weight:600;font-size:.88rem;">${p}</span>
-      <button class="btn btn-danger btn-sm" onclick="delParallel(${i})">✕</button>
-    </div>`;
-  }).join('');
-  updateAIParallelSelects();
-}
-function addParallel(){
-  const inp=el('newParallelInput');
-  const num=parseInt(inp.value);
-  if(!num||num<1||num>12){inp.focus();return;}
-  const label=num+' клас';
-  const parallels=getMyParallels();
-  if(parallels.includes(label)){toast('Паралель вже є');inp.value='';return;}
-  parallels.push(label);
-  parallels.sort((a,b)=>parseInt(a)-parseInt(b));
-  setMyParallels(parallels);
-  renderParallelsEditor();
-  inp.value=''; inp.focus();
-  toast('Паралель "'+label+'" додано');
-}
-function delParallel(i){
-  const parallels=getMyParallels();
-  parallels.splice(i,1);
-  setMyParallels(parallels);
-  renderParallelsEditor();
-}
-function updateAIParallelSelects(){
-  const parallels=getMyParallels();
-  const sel=el('aiParallelSel');
-  if(!sel)return;
-  const prev=sel.value;
-  sel.innerHTML='<option value="">— вибрати —</option>'+parallels.map(p=>`<option value="${p}">${p}</option>`).join('');
-  if(parallels.includes(prev))sel.value=prev;
-  updateAIPrompt();
-}
-
-// ══ LAUNCH CLASS DROPDOWN ══
 function updateLaunchClassDropdown(){
   const sel=el('launchClassSelect');
   if(!sel)return;
@@ -2556,12 +2619,14 @@ function renderArchivePage(){
           <div class="res-meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
             ${s.subject?`<span class="lib-tag lib-tag-sub">${s.subject}</span>`:''}
             ${s.cls?`<span class="lib-tag lib-tag-cls" style="background:${cc};">${s.cls}</span>`:''}
-            <span class="text-sm">${s.records.length} учасників · ${s.startedAt||''}</span>
+            <span class="text-sm"><span style="background:rgba(37,99,235,.12);color:var(--blue);font-weight:700;padding:1px 7px;border-radius:5px;">${s.records.length} учасників</span>${s.startedAt?` · <span style="background:rgba(22,163,74,.12);color:var(--green);font-weight:700;padding:1px 7px;border-radius:5px;">${new Date(s.startedAt).toLocaleDateString('uk-UA',{day:'numeric',month:'long'})}</span>`:''}
+            </span>
           </div>
         </div>
         <div class="res-badge" style="background:${grade.c};">${grade.l}</div>
         <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportArchiveSessionCSV('${sid}')" title="CSV">⬇CSV</button>
         <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="event.stopPropagation();exportArchiveSessionPDF('${sid}')" title="PDF">📄PDF</button>
+        <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation();deleteArchiveSession('${sid}')" title="Видалити назавжди">🗑 Назавжди</button>
         <span style="font-size:.75rem;color:rgba(26,26,46,.35);">▼</span>
       </div>
       <label style="display:flex;align-items:center;gap:7px;padding:7px 16px;border-top:1px solid var(--border);background:rgba(22,163,74,.07);cursor:pointer;font-size:.76rem;font-weight:600;color:rgba(22,163,74,.8);" onclick="event.stopPropagation()">
@@ -2578,7 +2643,7 @@ function renderArchivePage(){
             <th>Пор.</th>
             <th></th>
           </tr></thead>
-          <tbody>${renderResRows(s.records)}</tbody>
+          <tbody id="arcrtb-${sidSafe}">${renderArchiveResRows(s.records, sid)}</tbody>
         </table>
       </div>
     </div>`;
@@ -2587,6 +2652,56 @@ function renderArchivePage(){
 }
 
 function toggleArchiveDetail(sidSafe){el('ard-'+sidSafe)?.classList.toggle('open');}
+
+function renderArchiveResRows(records, sid){
+  return records.map((r,idx)=>{
+    const g=gradeByPct(r.pct);
+    const ri=r._ri!==undefined?r._ri:idx;
+    return`<tr>
+    <td><strong>${r.student}</strong></td>
+    <td class="text-sm">${r.cls||'—'}</td>
+    <td class="text-mono">${r.pct}%</td>
+    <td><span class="gspan" style="background:${g.c}">${g.l}</span></td>
+    <td>${r.violations>0?`<span class="tag tag-r">${r.violations}</span>`:'<span class="tag tag-g">0</span>'}</td>
+    <td><button class="btn btn-danger btn-sm" style="font-size:.7rem;" onclick="deleteArchiveResult('${sid}',${ri})" title="Видалити назавжди">🗑</button></td>
+  </tr>`;
+  }).join('');
+}
+
+function deleteArchiveSession(sid){
+  if(!confirm('ВИДАЛИТИ НАЗАВЖДИ всі результати цієї сесії з архіву?\nЦю дію неможливо скасувати!'))return;
+  // Remove from journal state
+  const st=getJournalState();
+  delete st[sid];
+  localStorage.setItem('sqpro_journal',JSON.stringify(st));
+  // Delete all results from Firebase and cache
+  const toDelete=_resultsCache.filter(r=>(r.sessionId||r.test||'?')===sid);
+  if(db){
+    const removes=toDelete.filter(r=>r._fbKey).map(r=>db.ref('results/'+r._fbKey).remove());
+    Promise.all(removes).catch(e=>toast('Помилка: '+e.message));
+  }
+  _resultsCache=_resultsCache.filter(r=>(r.sessionId||r.test||'?')!==sid);
+  localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache));
+  updateArchiveBadge();
+  renderArchivePage();
+  renderResultsPage();
+  toast('🗑 Сесію видалено назавжди');
+}
+
+function deleteArchiveResult(sid, ri){
+  if(!confirm('Видалити цей результат назавжди?'))return;
+  const r=_resultsCache[ri];
+  if(!r){toast('Помилка: результат не знайдено');return;}
+  if(db&&r._fbKey){
+    db.ref('results/'+r._fbKey).remove().catch(e=>toast('Помилка: '+e.message));
+  }
+  _resultsCache.splice(ri,1);
+  localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache));
+  updateArchiveBadge();
+  renderArchivePage();
+  renderResultsPage();
+  toast('🗑 Результат видалено назавжди');
+}
 
 function unarchiveSession(sid,cb){
   const st=getJournalState();
@@ -2660,6 +2775,42 @@ function renderDash(){
   if(prev)prev.innerHTML=questions.length?questions.slice(0,4).map((q,i)=>`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:.79rem;"><span style="font-family:monospace;color:var(--accent);margin-right:5px;">${i+1}.</span>${q.text||'(без тексту)'}</div>`).join('')+(questions.length>4?`<div class="text-sm" style="margin-top:5px;">…ще ${questions.length-4}</div>`:''): '<div class="empty-state"><div class="esi">✏️</div><p>Перейдіть до Конструктора</p></div>';
   const rec=el('dashRecent');
   if(rec)rec.innerHTML=rs.slice(0,5).length?rs.slice(0,5).map(r=>{const g=gradeByPct(r.pct);const cc=clsColor(r.cls);return`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:700;font-size:.82rem;">${r.student}</div><div class="text-sm">${r.date}${r.cls?' · <span style="background:'+cc+';color:#fff;padding:1px 5px;border-radius:4px;font-size:.62rem;font-weight:700;">'+r.cls+'</span>':''}</div></div><span class="gspan" style="background:${g.c};font-size:.82rem;">${g.l}</span></div>`}).join(''):'<div class="empty-state"><div class="esi">📊</div><p>Ще немає результатів</p></div>';
+  // Live progress block
+  renderDashLiveProgress();
+}
+
+function renderDashLiveProgress(){
+  const container=el('dashLiveProgress');
+  if(!container)return;
+  const sessions=_lastActiveSnap||{};
+  const activeSessions=Object.entries(sessions).filter(([,s])=>s.status==='active');
+  if(!activeSessions.length){
+    container.innerHTML='<div class="empty-state" style="padding:20px;"><div class="esi">🟢</div><p>Немає активних тестів</p></div>';
+    return;
+  }
+  container.innerHTML=activeSessions.map(([sid,s])=>{
+    const parts=s.participants||{};
+    const total=Object.keys(parts).length;
+    const done=Object.values(parts).filter(p=>p.status==='done').length;
+    const inProg=total-done;
+    const studentsHtml=Object.values(parts).map(p=>{
+      const pct=p.current&&p.total?Math.round(p.current/p.total*100):0;
+      const isDone=p.status==='done';
+      return`<div class="student-progress">
+        <div class="sp-name">${p.name||'Учень'}</div>
+        <div class="sp-bar-wrap"><div class="sp-bar" style="width:${isDone?100:pct}%;background:${isDone?'var(--green)':'var(--blue)'}"></div></div>
+        <div class="sp-status">${isDone?'✅ '+p.pct+'%':(p.current?`Q${p.current}/${p.total}`:'Очікує')}</div>
+      </div>`;
+    }).join('') || '<div class="text-sm" style="padding:4px 0;">Учні ще не приєдналися</div>';
+    return`<div style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <div class="live-dot"></div>
+        <span style="font-weight:700;font-size:.86rem;">${s.title||'Тест'}${s.cls?' · '+s.cls:''}</span>
+        <span style="font-size:.72rem;color:rgba(26,26,46,.4);">${done} здали · ${inProg} в процесі · ${total} всього</span>
+      </div>
+      <div class="progress-grid">${studentsHtml}</div>
+    </div>`;
+  }).join('<div class="divider"></div>');
 }
 
 // ══ PREVIEW ══
@@ -2732,12 +2883,8 @@ document.addEventListener('click',e=>{if(e.target.classList.contains('modal-bg')
 // ══ INIT ══
 function initApp(){
   loadTheme(); renderGrades(); loadGradeSettings();
-  // Запускаємо Firebase — він сам вирішить показати логін чи панель
   initFirebase();
-  window.addEventListener('storage',e=>{
-    if(!currentUser)return; // ігноруємо якщо не авторизовані
-    if(e.key==='sqpro_results'||e.key==='sqpro_lib')renderDash();
-  });
+  window.addEventListener('storage',e=>{if(e.key==='sqpro_results'||e.key==='sqpro_lib')renderDash();});
 }
 
 // Виконується тільки після підтвердження auth
@@ -2745,10 +2892,8 @@ function _postAuthInit(){
   loadTheme(); loadParallelColors(); renderGrades(); loadGradeSettings();
   renderDash(); renderResultsPage(); updateResFilter(); updateLibFilters(); updateArchiveBadge();
   syncMySubjects();
-  syncMyParallels();
-  updateAISubjectSelects();
-  updateAIParallelSelects();
-  updateAIPrompt();
+  updateAISubjectSelect();
+  updateAIPromptBox();
   const saved=JSON.parse(localStorage.getItem('sqpro_sec')||'{}');
   if(saved.maxviol!==undefined){const e=el('s-maxviol');if(e)e.value=saved.maxviol;}
   ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','finishOnTime'].forEach(id=>{
@@ -2757,100 +2902,7 @@ function _postAuthInit(){
   document.querySelectorAll('#s-tab,#s-blur,#s-ctx,#s-copy,#s-prtsc,#s-wm,#s-shuffle,#finishOnTime,#s-maxviol').forEach(inp=>{
     inp.addEventListener('change',saveSecSettings);inp.addEventListener('input',saveSecSettings);
   });
-  if(!db){syncLibrary();}
-}
-
-// ══ АУДИТ БЕЗПЕКИ ══
-async function runSecAudit(){
-  const el2=el('secAudit');
-  if(!el2)return;
-  el2.innerHTML='<div style="opacity:.5;font-size:.8rem;">Перевіряємо…</div>';
-  const checks=[];
-  const warn=(label,info)=>checks.push({label,ok:false,info});
-  const ok=(label,info)=>checks.push({label,ok:true,info});
-  const info=(label,info,isOk)=>checks.push({label,ok:isOk,info});
-
-  // ── AUTH & CONNECTION ──
-  info('Firebase Authentication', currentUser?'Авторизовано як '+currentUser.email:'❌ Не авторизовано', !!currentUser);
-  info('HTTPS з\'єднання', location.protocol==='https:'?'Захищений протокол':(location.hostname==='localhost'?'localhost (OK для розробки)':'⚠️ HTTP — дані передаються відкрито'), location.protocol==='https:'||location.hostname==='localhost');
-  info('Firebase підключено', db?'З\'єднання активне':'❌ Firebase не підключено', !!db);
-
-  // ── CRYPTO ──
-  const cryptoOk=!!(window.crypto&&window.crypto.subtle);
-  info('Web Crypto API (AES-256)', cryptoOk?'Доступний':'Браузер не підтримує шифрування', cryptoOk);
-
-  // ── FIREBASE RULES ──
-  if(db){
-    try{
-      info('Firebase Rules', currentUser?'Авторизований доступ активний':'Перевірте Rules у Firebase Console', !!currentUser);
-    }catch{
-      warn('Firebase Rules','Не вдалось перевірити');
-    }
-  }
-
-  // ── SECURITY TOGGLES ──
-  const secItems=[
-    {id:'s-tab',  label:'Моніторинг вкладок',       rec:'Фіксує перехід учня на іншу вкладку'},
-    {id:'s-blur', label:'Розмиття при відволіканні', rec:'Тест розмивається при втраті фокусу'},
-    {id:'s-ctx',  label:'Блок контекстного меню',   rec:'Права кнопка миші вимкнена'},
-    {id:'s-copy', label:'Блок копіювання тексту',   rec:'Ctrl+C та виділення заборонено'},
-    {id:'s-prtsc',label:'Виявлення Print Screen',   rec:'Фіксує PrtSc на Desktop'},
-    {id:'s-wm',   label:'Водяний знак',              rec:'Ім\'я учня поверх контенту — захист від фото'},
-    {id:'s-shuffle',label:'Перемішування питань',   rec:'Кожен учень бачить різний порядок'},
-  ];
-  secItems.forEach(({id,label,rec})=>{
-    const on=getSec(id);
-    info(label, on?'✅ Увімкнено':'⚠️ Вимкнено — '+rec, on);
-  });
-
-  // ── MAX VIOLATIONS ──
-  const mv=getSecVal('s-maxviol');
-  info('Макс. порушень до завершення', mv<=5?`${mv} — прийнятне значення`:(mv<=10?`${mv} — допустимо`:`${mv} — занадто м'яко, рекомендуємо ≤5`), mv<=5);
-
-  // ── ACTIVE STALE SESSIONS ──
-  if(db){
-    const snap=await db.ref('sessions').once('value').catch(()=>null);
-    if(snap){
-      const all=snap.val()||{};
-      const stale=Object.values(all).filter(s=>s.status==='active'&&s.startedAt&&(Date.now()-new Date(s.startedAt).getTime())>4*60*60*1000).length;
-      const active=Object.values(all).filter(s=>s.status==='active').length;
-      info('Застарілі активні сесії (>4год)', stale===0?`Немає (активних: ${active})`:`⚠️ ${stale} застарілих — зупиніть на сторінці Активні тести`, stale===0);
-    }
-  }
-
-  // ── DUPLICATE FINGERPRINTS IN RESULTS ──
-  const rs=getResults();
-  if(rs.length){
-    const fpMap={};
-    rs.forEach(r=>{if(r._fp){const k=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');fpMap[k]=(fpMap[k]||[]);fpMap[k].push(r.student);}});
-    const dupes=Object.values(fpMap).filter(arr=>[...new Set(arr)].length>1).length;
-    info('Дублі пристроїв у результатах', dupes===0?'Підозрілих збігів не знайдено':`⚠️ ${dupes} підозрілих збігів пристроїв — перегляньте результати`, dupes===0);
-
-    const noSig=rs.filter(r=>!r._sig).length;
-    info('Підписи результатів', noSig===0?'Всі результати підписані':`⚠️ ${noSig} результатів без цифрового підпису`, noSig===0);
-  }
-
-  // ── BROWSER SECURITY FEATURES ──
-  info('localStorage доступний', typeof localStorage!=='undefined'?'Налаштування зберігаються локально':'❌ Недоступний', typeof localStorage!=='undefined');
-  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  info('Тип пристрою', isMobile?'📱 Мобільний — системний скріншот не блокується (водяний знак критичний)':'💻 Desktop — повний захист активний', !isMobile);
-
-  const pass=checks.filter(c=>c.ok).length;
-  const total2=checks.length;
-  const score=Math.round(pass/total2*100);
-  const scoreColor=score>=80?'#16a34a':score>=60?'#d97706':'#dc2626';
-
-  el2.innerHTML=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0 12px;border-bottom:2px solid var(--border);margin-bottom:8px;">
-    <div style="font-size:1.6rem;font-weight:800;color:${scoreColor};">${score}%</div>
-    <div style="font-size:.78rem;line-height:1.5;"><strong>Загальна оцінка безпеки</strong><br><span style="opacity:.6;">${pass} з ${total2} перевірок пройдено</span></div>
-  </div>`+checks.map(c=>`
-    <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:.9rem;flex-shrink:0;margin-top:1px;">${c.ok?'✅':'⚠️'}</span>
-      <div style="flex:1;min-width:0;">
-        <span style="font-weight:600;font-size:.8rem;">${c.label}</span>
-        <div style="color:rgba(26,26,46,.5);font-size:.73rem;margin-top:1px;">${c.info}</div>
-      </div>
-    </div>`).join('');
+  syncLibrary();
 }
 
 function saveSecSettings(){
@@ -2859,6 +2911,64 @@ function saveSecSettings(){
     const e=el(id);if(e)data[id]=e.checked;
   });
   localStorage.setItem('sqpro_sec',JSON.stringify(data));
+}
+
+// ══ АУДИТ БЕЗПЕКИ ══
+async function runSecAudit(){
+  const el2=el('secAudit');
+  if(!el2)return;
+  el2.innerHTML='<div style="color:rgba(26,26,46,.4);font-size:.8rem;padding:8px 0;">🔄 Перевірка…</div>';
+
+  const checks=[];
+  checks.push({label:'Firebase Authentication',ok:!!currentUser,info:currentUser?'Авторизовано як '+currentUser.email:'Не авторизовано'});
+  checks.push({label:'HTTPS з\'єднання',ok:location.protocol==='https:'||location.hostname==='localhost',info:location.protocol==='https:'?'Захищений протокол':'HTTP — дані передаються відкрито'});
+  checks.push({label:'Firebase підключено',ok:!!db,info:db?'З\'єднання активне':'Немає з\'єднання'});
+  checks.push({label:'AES-256 шифрування',ok:!!(window.crypto&&window.crypto.subtle),info:window.crypto?.subtle?'Web Crypto API доступний':'Браузер не підтримує'});
+  checks.push({label:'Водяний знак',ok:getSec('s-wm'),info:getSec('s-wm')?'Увімкнено':'Рекомендуємо увімкнути'});
+  checks.push({label:'Перемішування питань',ok:getSec('s-shuffle'),info:getSec('s-shuffle')?'Кожен учень бачить інший порядок':'Рекомендуємо увімкнути'});
+
+  if(db&&currentUser){
+    try{
+      const sessSnap=await db.ref('sessions').once('value');
+      const allSess=sessSnap.val()||{};
+      const stale=Object.values(allSess).filter(s=>s.status==='active'&&s.startedAt&&(Date.now()-new Date(s.startedAt).getTime())>4*3600*1000).length;
+      checks.push({label:'Застарілі сесії (>4год)',ok:stale===0,info:stale===0?'Немає':stale+' — зупиніть у розділі Активні тести'});
+    }catch(e){
+      checks.push({label:'Застарілі сесії',ok:false,info:'Не вдалось: '+e.message});
+    }
+    try{
+      const resSnap=await db.ref('results').limitToLast(100).once('value');
+      const allRes=Object.values(resSnap.val()||{});
+      const total=allRes.length;
+      // Нові результати (з _fp або _timing) повинні мати підпис
+      // Старі результати (до впровадження HMAC) — без підпису, це нормально
+      const newResults=allRes.filter(r=>r._fp||r._timing);
+      const unsignedNew=newResults.filter(r=>!r._sig).length;
+      const oldUnsigned=allRes.filter(r=>!r._sig&&!r._fp&&!r._timing).length;
+      checks.push({
+        label:'HMAC підписи',
+        ok:unsignedNew===0,
+        info:total===0?'Немає результатів':
+             unsignedNew===0?'Всі нові результати підписані ('+total+' загалом)':
+             unsignedNew+' нових результатів без підпису'
+             +(oldUnsigned>0?' · '+oldUnsigned+' старих (до оновлення)':'')
+      });
+      const fpMap={};
+      allRes.forEach(r=>{if(r._fp){const k=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');if(!fpMap[k])fpMap[k]=new Set();fpMap[k].add(r.student);}});
+      const dupes=Object.values(fpMap).filter(s=>s.size>1).length;
+      checks.push({label:'Дублі пристроїв',ok:dupes===0,info:dupes===0?'Не знайдено':dupes+' пристроїв з кількома іменами'});
+    }catch(e){
+      checks.push({label:'Аналіз результатів',ok:false,info:'Помилка: '+e.message+'. Перевірте Firebase Rules.'});
+    }
+  } else {
+    checks.push({label:'Firebase перевірки',ok:false,info:currentUser?'Firebase не підключено':'Потрібна авторизація'});
+  }
+
+  el2.innerHTML=checks.map(c=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+    <span style="font-size:1rem;flex-shrink:0;width:20px;text-align:center;">${c.ok?'✅':'⚠️'}</span>
+    <div style="flex:1;"><span style="font-weight:600;font-size:.82rem;">${c.label}</span><br>
+    <span style="color:${c.ok?'rgba(26,26,46,.45)':'var(--accent)'};font-size:.73rem;">${c.info}</span></div>
+  </div>`).join('');
 }
 
 // Enter на формі входу
