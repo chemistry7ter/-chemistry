@@ -747,12 +747,13 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
-    <div class="grid2" style="align-items:start;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+      <!-- Ліва колонка: Акаунт + Тема -->
       <div>
         <div class="card">
           <div class="card-title">🔑 Акаунт вчителя</div>
           <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);border-radius:9px;padding:10px 13px;font-size:.76rem;color:rgba(37,99,235,.8);margin-bottom:14px;line-height:1.6;">
-            🔐 Захист через Firebase Authentication. Пароль зберігається на серверах Google — не в браузері. Збережений HTML-файл без активної Firebase-сесії нічого не покаже.
+            🔐 Захист через Firebase Authentication. Пароль зберігається на серверах Google — не в браузері.
           </div>
           <div style="padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px;">
             <div style="font-size:.67rem;font-weight:700;color:rgba(26,26,46,.42);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">Поточний email</div>
@@ -766,19 +767,6 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
             <button class="btn btn-outline" onclick="sendResetEmail()">📧 Скинути через email</button>
           </div>
         </div>
-        <div class="card">
-          <div class="card-title">🔥 Firebase конфігурація</div>
-          <div class="text-sm" style="line-height:1.85;margin-bottom:12px;">
-            <p style="margin-bottom:6px;">1. Зайдіть на <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);">console.firebase.google.com</a></p>
-            <p style="margin-bottom:6px;">2. Створіть проєкт → Додайте веб-додаток</p>
-            <p style="margin-bottom:6px;">3. Build → Realtime Database → Create database (регіон: europe-west1)</p>
-            <p style="margin-bottom:6px;">4. Rules: <code style="background:var(--paper2);padding:1px 5px;border-radius:4px;">{ "rules": { ".read": true, ".write": true } }</code></p>
-            <p style="margin-bottom:6px;">5. Відкрийте файл <code>firebase-config.js</code> та вставте конфіг зі свого проєкту</p>
-          </div>
-          <div id="fbStatus" style="font-size:.8rem;"></div>
-        </div>
-      </div>
-      <div>
         <div class="card">
           <div class="card-title">🎨 Тема оформлення</div>
           <div class="fg"><label class="fl">Колір панелі навігації</label>
@@ -798,12 +786,17 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
             <button class="btn btn-outline" onclick="resetTheme()">↺ Скинути</button>
           </div>
         </div>
+      </div>
+      <!-- Права колонка: Firebase Rules (вужча — 55% ширини через max-width) -->
+      <div style="max-width:55%;">
         <div class="card">
           <div class="card-title">🔥 Firebase Rules</div>
-          <div class="text-sm" style="margin-bottom:10px;line-height:1.6;">
-            Відкрийте <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);">Firebase Console</a> → ваш проєкт → Realtime Database → Rules → вставте і натисніть <strong>Publish</strong>:
+          <!-- Статус підключення -->
+          <div id="fbStatus" style="font-size:.8rem;margin-bottom:10px;"></div>
+          <div style="background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);border-radius:8px;padding:9px 12px;font-size:.73rem;line-height:1.65;margin-bottom:10px;">
+            <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);font-weight:700;">Firebase Console</a> → ваш проєкт → Realtime Database → <strong>Rules</strong> → вставте → <strong>Publish</strong>
           </div>
-          <div id="fbRulesBox" style="background:var(--paper2);border-radius:8px;padding:10px;font-family:monospace;font-size:.68rem;line-height:1.75;white-space:pre;overflow-x:auto;margin-bottom:8px;user-select:text;cursor:text;">{
+          <div id="fbRulesBox" style="background:var(--paper2);border-radius:8px;padding:10px;font-family:monospace;font-size:.67rem;line-height:1.75;white-space:pre;overflow-x:auto;margin-bottom:8px;user-select:text;cursor:text;">{
   "rules": {
     "sessions": {
       ".read": true,
@@ -970,7 +963,8 @@ function applyTheme(){
   const isUrl=logo.startsWith('http')||logo.startsWith('/');
   if(li){if(isUrl)li.innerHTML=`<img src="${logo}" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">`;else li.textContent=logo;}
   if(ll){if(isUrl)ll.innerHTML=`<img src="${logo}" style="width:48px;height:48px;object-fit:contain;border-radius:10px;">`;else ll.textContent=logo;}
-  if(lt){const h1=lt.querySelector('h1');if(h1)h1.textContent=name;}
+  // sbLogoText — це сам h1 елемент (не обгортка)
+  if(lt)lt.textContent=name;
   if(ltt)ltt.textContent=name;
   document.title=name+' — Панель вчителя';
   let fav=document.querySelector("link[rel~='icon']");
@@ -1869,8 +1863,12 @@ function renderActiveSessionsFromSnap(sessions){
       <div class="session-live-header" onclick="toggleActiveDetail('${sid}')">
         ${statusDot}
         <div class="live-info">
-          <div class="live-title">${s.title||'Тест'}${s.cls?' · '+s.cls:''}</div>
-          <div class="live-meta">${s.subject?s.subject+' · ':''}${s.startedAt?'🕐 '+_fmtElapsed(s.startedAt)+' · ':''}${s.startedAt?new Date(s.startedAt).toLocaleString('uk-UA',{hour:'2-digit',minute:'2-digit'})+' · ':''}${statusLabel}</div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px;">
+            <div class="live-title" style="margin-bottom:0;">${s.title||'Тест'}</div>
+            ${s.cls?`<span style="background:rgba(37,99,235,.12);color:var(--blue);border:1px solid rgba(37,99,235,.22);border-radius:20px;padding:1px 9px;font-size:.68rem;font-weight:700;">${s.cls}</span>`:''}
+            <span style="background:rgba(22,163,74,.12);color:#16a34a;border:1px solid rgba(22,163,74,.22);border-radius:20px;padding:1px 9px;font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums;" id="et-${sid}">⏱ ${_fmtElapsed(s.startedAt)}</span>
+          </div>
+          <div class="live-meta">${s.subject||''} · ${s.startedAt?new Date(s.startedAt).toLocaleString('uk-UA',{hour:'2-digit',minute:'2-digit'}):''} · ${statusLabel}</div>
         </div>
         <div class="live-stats">
           <div class="live-stat"><div class="live-stat-val" style="color:var(--green)">${done}</div><div class="live-stat-lbl">Здали</div></div>
@@ -1914,29 +1912,60 @@ function _fmtElapsed(startedAt){
   return(m||1)+'хв';
 }
 
-// Живий таймер — оновлює elapsed кожну хвилину
+// Живий таймер — оновлює тільки текст elapsed-плашок кожну хвилину (без ре-рендеру)
 let _elapsedTimerInt=null;
 function _startElapsedTimer(){
   if(_elapsedTimerInt)return;
   _elapsedTimerInt=setInterval(()=>{
-    if(document.querySelector('[data-page="active"].active')||document.querySelector('[data-page="dash"].active')){
-      renderActiveSessions();
-      renderDashLiveProgress();
-    }
-  },60000);
+    // Оновлюємо тільки текст плашок et-* (не перемальовуємо весь список)
+    document.querySelectorAll('[id^="et-"]').forEach(el=>{
+      const sid=el.id.replace('et-','');
+      const s=(_lastActiveSnap||{})[sid];
+      if(s?.startedAt)el.textContent='⏱ '+_fmtElapsed(s.startedAt);
+    });
+    // В огляді — оновлюємо dash timer badges
+    document.querySelectorAll('[id^="dt-"]').forEach(el=>{
+      const sid=el.id.replace('dt-','');
+      const s=(_lastActiveSnap||{})[sid];
+      if(s?.startedAt)el.textContent='⏱ '+_fmtElapsed(s.startedAt);
+    });
+  },30000); // кожні 30с для точності
 }
 
 function copySessionLink(sid){
-  const baseUrl=typeof APP_URL!=='undefined'?APP_URL:(window.location.href.replace(/[^/]*$/, ''));
-  // Посилання без ключа шифрування — для вже запущеної сесії потрібен оригінальний URL
-  // Зберігаємо URL при запуску у sessionStorage
   const savedUrl=sessionStorage.getItem('examUrl_'+sid);
-  if(savedUrl){
-    navigator.clipboard.writeText(savedUrl)
-      .then(()=>toast('📋 Посилання скопійовано!'))
-      .catch(()=>{const ta=document.createElement('textarea');ta.value=savedUrl;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('📋 Скопійовано');});
-  } else {
-    toast('⚠️ Посилання недоступне — запустіть тест заново');
+  if(!savedUrl){toast('⚠️ Посилання недоступне — запустіть тест заново');return;}
+  _shareOrCopy(savedUrl,'📋 Посилання скопійовано!');
+}
+// Мобільний-сумісний copy/share
+function _shareOrCopy(text, successMsg){
+  // 1. Web Share API — нативний діалог на мобільних (iOS Safari, Chrome Android)
+  if(navigator.share){
+    navigator.share({title:'Посилання на тест',url:text}).then(()=>toast('✅ Поділено!')).catch(()=>_clipboardCopy(text,successMsg));
+    return;
+  }
+  _clipboardCopy(text,successMsg);
+}
+function _clipboardCopy(text,successMsg){
+  // 2. Clipboard API (потребує HTTPS + user gesture)
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast(successMsg||'📋 Скопійовано')).catch(()=>_execCopy(text,successMsg));
+    return;
+  }
+  _execCopy(text,successMsg);
+}
+function _execCopy(text,successMsg){
+  // 3. Fallback — textarea + execCommand (застарілий, але працює скрізь)
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.style.cssText='position:fixed;top:50%;left:50%;width:1px;height:1px;opacity:0;';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    const ok=document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast(ok?(successMsg||'📋 Скопійовано'):'⚠️ Не вдалось скопіювати');
+  }catch(e){
+    // 4. Prompt як останній варіант
+    prompt('Скопіюйте посилання вручну:',text);
   }
 }
 
@@ -2837,9 +2866,13 @@ function renderDashLiveProgress(){
     const waiting=entries.filter(p=>!p.status||p.status==='waiting'||(!p.current&&p.status!=='done')).length;
     if(!entries.length)return`<div style="padding:8px 0;font-size:.82rem;color:rgba(26,26,46,.4);">${s.title||'Тест'} — учні ще не приєдналися</div>`;
     return`<div style="margin-bottom:16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;flex-wrap:wrap;gap:6px;">
-        <div style="font-weight:700;font-size:.84rem;">${s.title||'Тест'}${s.cls?' <span style="font-weight:400;color:rgba(26,26,46,.45);font-size:.78rem;">· '+s.cls+'</span>':''}</div>
-        <div style="display:flex;gap:5px;">
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:6px;">
+          <div style="font-weight:700;font-size:.88rem;">${s.title||'Тест'}</div>
+          ${s.cls?`<span style="background:rgba(37,99,235,.12);color:var(--blue);border:1.5px solid rgba(37,99,235,.25);border-radius:20px;padding:2px 11px;font-size:.7rem;font-weight:700;">🏫 ${s.cls}</span>`:''}
+          <span id="dt-${sid}" style="background:rgba(22,163,74,.1);color:#16a34a;border:1.5px solid rgba(22,163,74,.22);border-radius:20px;padding:2px 11px;font-size:.7rem;font-weight:700;font-variant-numeric:tabular-nums;">⏱ ${_fmtElapsed(s.startedAt)}</span>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
           <span style="background:rgba(22,163,74,.12);color:#16a34a;border:1px solid rgba(22,163,74,.25);padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700;">✅ ${done} здали</span>
           <span style="background:rgba(37,99,235,.1);color:var(--blue);border:1px solid rgba(37,99,235,.2);padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700;">⏳ ${inProg} в процесі</span>
           <span style="background:rgba(26,26,46,.06);color:rgba(26,26,46,.5);border:1px solid rgba(26,26,46,.1);padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700;">👥 ${entries.length}</span>
