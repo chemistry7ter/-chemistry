@@ -1863,14 +1863,12 @@ function renderActiveSessionsFromSnap(sessions){
       <div class="session-live-header" onclick="toggleActiveDetail('${sid}')">
         ${statusDot}
         <div class="live-info">
-          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px;">
-            <div class="live-title" style="margin-bottom:0;">${s.title||'Тест'}</div>
-            ${s.cls?`<span style="background:rgba(37,99,235,.12);color:var(--blue);border:1px solid rgba(37,99,235,.22);border-radius:20px;padding:1px 9px;font-size:.68rem;font-weight:700;">${s.cls}</span>`:''}
-            <span style="background:rgba(22,163,74,.12);color:#16a34a;border:1px solid rgba(22,163,74,.22);border-radius:20px;padding:1px 9px;font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums;" id="et-${sid}">⏱ ${_fmtElapsed(s.startedAt)}</span>
-          </div>
+          <div class="live-title">${s.title||'Тест'}</div>
           <div class="live-meta">${s.subject||''} · ${s.startedAt?new Date(s.startedAt).toLocaleString('uk-UA',{hour:'2-digit',minute:'2-digit'}):''} · ${statusLabel}</div>
         </div>
         <div class="live-stats">
+          ${s.startedAt?`<div class="live-stat"><div id="et-${sid}" style="font-size:1.1rem;font-weight:800;color:#16a34a;line-height:1;font-variant-numeric:tabular-nums;">${_fmtElapsed(s.startedAt)}</div><div class="live-stat-lbl">Час</div></div>`:''}
+          ${s.cls?`<div class="live-stat"><div style="font-size:1.1rem;font-weight:800;color:var(--blue);line-height:1;">${s.cls}</div><div class="live-stat-lbl">Клас</div></div>`:''}
           <div class="live-stat"><div class="live-stat-val" style="color:var(--green)">${done}</div><div class="live-stat-lbl">Здали</div></div>
           <div class="live-stat"><div class="live-stat-val" style="color:var(--blue)">${inProgress}</div><div class="live-stat-lbl">В процесі</div></div>
           <div class="live-stat"><div class="live-stat-val">${total}</div><div class="live-stat-lbl">Всього</div></div>
@@ -1897,6 +1895,11 @@ function renderActiveSessionsFromSnap(sessions){
       </div>
     </div>`;
   }).join('');
+  // Відновлюємо open-стан шторок після перемальовування
+  openSids.forEach(id=>{
+    const d=el(id);
+    if(d)d.classList.add('open');
+  });
 }
 
 function toggleActiveDetail(sid){el('ld-'+sid)?.classList.toggle('open');}
