@@ -757,56 +757,95 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
-      <!-- Ліва колонка: Акаунт + Тема -->
-      <div>
-        <div class="card">
-          <div class="card-title">🔑 Акаунт вчителя</div>
-          <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);border-radius:9px;padding:10px 13px;font-size:.76rem;color:rgba(37,99,235,.8);margin-bottom:14px;line-height:1.6;">
-            🔐 Захист через Firebase Authentication. Пароль зберігається на серверах Google — не в браузері.
-          </div>
-          <div style="padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px;">
-            <div style="font-size:.67rem;font-weight:700;color:rgba(26,26,46,.42);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">Поточний email</div>
-            <div id="currentEmailDisplay" style="font-size:.88rem;font-weight:700;color:var(--blue);">—</div>
-          </div>
-          <div class="fg"><label class="fl">Новий пароль (мін. 6 символів)</label><input type="password" id="sNewPass" placeholder="••••••••"></div>
-          <div class="fg"><label class="fl">Підтвердити</label><input type="password" id="sNewPass2"></div>
-          <div id="sMsg" style="font-size:.8rem;margin-bottom:9px;"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="saveAuthSettings()">💾 Змінити пароль</button>
-            <button class="btn btn-outline" onclick="sendResetEmail()">📧 Скинути через email</button>
+
+    <!-- ── Рядок 1: Акаунт + Тема ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:start;">
+
+      <!-- Акаунт -->
+      <div class="card" style="margin-bottom:0;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(37,99,235,.1);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">🔑</div>
+          <div>
+            <div class="card-title" style="margin-bottom:1px;">Акаунт вчителя</div>
+            <div id="currentEmailDisplay" style="font-size:.75rem;color:var(--blue);font-weight:600;">—</div>
           </div>
         </div>
-        <div class="card">
-          <div class="card-title">🎨 Тема оформлення</div>
-          <div class="fg"><label class="fl">Колір панелі навігації</label>
-            <input type="color" id="themeColor" value="#1a1a2e" oninput="applyTheme()">
-          </div>
-          <div class="fg"><label class="fl">Акцентний колір</label>
-            <input type="color" id="themeAccent" value="#c84b31" oninput="applyTheme()">
-          </div>
-          <div class="fg"><label class="fl">Логотип (emoji або URL)</label>
-            <input type="text" id="themeLogo" placeholder="🧪 або https://…/logo.png" oninput="applyTheme()">
-          </div>
-          <div class="fg"><label class="fl">Назва системи</label>
-            <input type="text" id="themeName" placeholder="SecureQuiz" oninput="applyTheme()">
-          </div>
-          <div style="display:flex;gap:7px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="saveTheme()">💾 Зберегти тему</button>
-            <button class="btn btn-outline" onclick="resetTheme()">↺ Скинути</button>
-          </div>
+        <div style="background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);border-radius:8px;padding:9px 12px;font-size:.74rem;color:rgba(37,99,235,.85);margin-bottom:14px;line-height:1.6;">
+          🔐 Пароль зберігається на серверах Google (Firebase Auth) — не в браузері.
+        </div>
+        <div class="fg"><label class="fl">Новий пароль <span style="opacity:.5;font-weight:400;">(мін. 6 символів)</span></label><input type="password" id="sNewPass" placeholder="••••••••"></div>
+        <div class="fg"><label class="fl">Підтвердити пароль</label><input type="password" id="sNewPass2"></div>
+        <div id="sMsg" style="font-size:.78rem;min-height:18px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="saveAuthSettings()">💾 Змінити пароль</button>
+          <button class="btn btn-outline" onclick="sendResetEmail()">📧 Скинути через email</button>
         </div>
       </div>
-      <!-- Права колонка: Firebase Rules (вужча — 55% ширини через max-width) -->
-      <div style="max-width:55%;">
-        <div class="card">
-          <div class="card-title">🔥 Firebase Rules</div>
-          <!-- Статус підключення -->
-          <div id="fbStatus" style="font-size:.8rem;margin-bottom:10px;"></div>
-          <div style="background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);border-radius:8px;padding:9px 12px;font-size:.73rem;line-height:1.65;margin-bottom:10px;">
-            <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);font-weight:700;">Firebase Console</a> → ваш проєкт → Realtime Database → <strong>Rules</strong> → вставте → <strong>Publish</strong>
+
+      <!-- Тема оформлення -->
+      <div class="card" style="margin-bottom:0;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(200,75,49,.1);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">🎨</div>
+          <div class="card-title" style="margin-bottom:0;">Тема оформлення</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
+          <div class="fg" style="margin-bottom:0;">
+            <label class="fl">Колір панелі</label>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+              <input type="color" id="themeColor" value="#1a1a2e" oninput="applyTheme()" style="width:44px;height:34px;border-radius:7px;border:1.5px solid var(--border);cursor:pointer;padding:2px;">
+              <span style="font-size:.72rem;color:rgba(26,26,46,.45);">Навігація</span>
+            </div>
           </div>
-          <div id="fbRulesBox" style="background:var(--paper2);border-radius:8px;padding:10px;font-family:monospace;font-size:.67rem;line-height:1.75;white-space:pre;overflow-x:auto;margin-bottom:8px;user-select:text;cursor:text;">{
+          <div class="fg" style="margin-bottom:0;">
+            <label class="fl">Акцентний колір</label>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+              <input type="color" id="themeAccent" value="#c84b31" oninput="applyTheme()" style="width:44px;height:34px;border-radius:7px;border:1.5px solid var(--border);cursor:pointer;padding:2px;">
+              <span style="font-size:.72rem;color:rgba(26,26,46,.45);">Кнопки, акценти</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          <div class="fg" style="margin-bottom:0;">
+            <label class="fl">Логотип</label>
+            <input type="text" id="themeLogo" placeholder="🧪 або URL" oninput="applyTheme()" style="margin-top:4px;">
+          </div>
+          <div class="fg" style="margin-bottom:0;">
+            <label class="fl">Назва системи</label>
+            <input type="text" id="themeName" placeholder="SecureQuiz" oninput="applyTheme()" style="margin-top:4px;">
+          </div>
+        </div>
+        <!-- Попередній перегляд -->
+        <div style="background:var(--paper2);border-radius:8px;padding:10px 13px;display:flex;align-items:center;gap:10px;margin-bottom:14px;border:1px solid var(--border);">
+          <span style="font-size:1.3rem;" id="prevLogoIcon">🧪</span>
+          <span style="font-weight:700;font-size:.88rem;" id="prevLogoName">SecureQuiz</span>
+          <span style="font-size:.68rem;color:rgba(26,26,46,.35);margin-left:auto;">Попередній перегляд</span>
+        </div>
+        <div style="display:flex;gap:7px;">
+          <button class="btn btn-primary" onclick="saveTheme()">💾 Зберегти</button>
+          <button class="btn btn-outline" onclick="resetTheme()">↺ Скинути</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Рядок 2: Firebase Rules (повна ширина, знизу) ── -->
+    <div class="card" style="margin-bottom:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(239,68,68,.1);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">🔥</div>
+          <div>
+            <div class="card-title" style="margin-bottom:2px;">Firebase Rules</div>
+            <div id="fbStatus" style="font-size:.74rem;"></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <a href="https://console.firebase.google.com" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none;">🌐 Firebase Console</a>
+          <button class="btn btn-outline btn-sm" onclick="copyFirebaseRules()">📋 Скопіювати</button>
+        </div>
+      </div>
+      <div style="background:rgba(37,99,235,.04);border:1px solid rgba(37,99,235,.1);border-radius:8px;padding:8px 13px;font-size:.73rem;line-height:1.7;margin-bottom:12px;">
+        Відкрийте <strong>Firebase Console</strong> → ваш проєкт → <strong>Realtime Database</strong> → вкладка <strong>Rules</strong> → вставте код нижче → натисніть <strong>Publish</strong>
+      </div>
+      <div id="fbRulesBox" style="background:var(--paper2);border-radius:8px;padding:13px 16px;font-family:monospace;font-size:.72rem;line-height:1.8;white-space:pre;overflow-x:auto;user-select:text;cursor:text;border:1px solid var(--border);">{
   "rules": {
     "sessions": {
       ".read": true,
@@ -832,10 +871,8 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
     "config":   { ".read": "auth != null", ".write": "auth != null" }
   }
 }</div>
-          <button class="btn btn-outline btn-sm" onclick="copyFirebaseRules()">📋 Скопіювати Rules</button>
-        </div>
-      </div>
     </div>
+
   </div>
 
 </div><!-- /main -->
@@ -976,6 +1013,10 @@ function applyTheme(){
   // sbLogoText — це сам h1 елемент (не обгортка)
   if(lt)lt.textContent=name;
   if(ltt)ltt.textContent=name;
+  // Попередній перегляд у налаштуваннях
+  const prev=el('prevLogoIcon'),prevN=el('prevLogoName');
+  if(prev){if(isUrl)prev.innerHTML=`<img src="${logo}" style="width:22px;height:22px;object-fit:contain;border-radius:4px;">`;else prev.textContent=logo;}
+  if(prevN)prevN.textContent=name;
   document.title=name+' — Панель вчителя';
   let fav=document.querySelector("link[rel~='icon']");
   if(!fav){fav=document.createElement('link');fav.rel='icon';document.head.appendChild(fav);}
