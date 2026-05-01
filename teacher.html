@@ -759,7 +759,8 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
   <div class="page" id="page-settings">
 
     <!-- ── Рядок 1: Акаунт + Тема ── -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:start;">
+    <div style="max-width:900px;width:100%;margin:0 auto;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;align-items:start;">
 
       <!-- Акаунт -->
       <div class="card" style="margin-bottom:0;">
@@ -845,7 +846,7 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
       <div style="background:rgba(37,99,235,.04);border:1px solid rgba(37,99,235,.1);border-radius:8px;padding:8px 13px;font-size:.73rem;line-height:1.7;margin-bottom:12px;">
         Відкрийте <strong>Firebase Console</strong> → ваш проєкт → <strong>Realtime Database</strong> → вкладка <strong>Rules</strong> → вставте код нижче → натисніть <strong>Publish</strong>
       </div>
-      <div id="fbRulesBox" style="background:var(--paper2);border-radius:8px;padding:13px 16px;font-family:monospace;font-size:.72rem;line-height:1.8;white-space:pre;overflow-x:auto;user-select:text;cursor:text;border:1px solid var(--border);">{
+      <div id="fbRulesBox" style="background:var(--paper2);border-radius:8px;padding:13px 16px;font-family:monospace;font-size:.72rem;line-height:1.8;white-space:pre;overflow-x:auto;user-select:text;cursor:text;border:1px solid var(--border);max-width:100%;box-sizing:border-box;">{
   "rules": {
     "sessions": {
       ".read": true,
@@ -873,6 +874,7 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 }</div>
     </div>
 
+    </div><!-- /max-width wrapper -->
   </div>
 
 </div><!-- /main -->
