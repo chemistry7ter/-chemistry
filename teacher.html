@@ -443,9 +443,19 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
     </div>
     <!-- АКТИВНІ ТЕСТИ — завжди вгорі -->
     <div class="card" style="margin-bottom:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
         <div class="card-title" style="margin-bottom:0;">🟢 Активні тести — прогрес учнів</div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;">
+          <!-- Таймер — прихований коли нема тестів, оновлюється з renderDashLiveProgress -->
+          <div id="dashTimerWrap" style="display:none;background:rgba(22,163,74,.1);border:1.5px solid rgba(22,163,74,.28);border-radius:9px;padding:5px 14px;text-align:center;min-width:72px;">
+            <div id="dashTimer" style="font-size:1.4rem;font-weight:800;color:#16a34a;line-height:1;font-variant-numeric:tabular-nums;">—</div>
+            <div style="font-size:.62rem;font-weight:700;color:rgba(22,163,74,.7);text-transform:uppercase;letter-spacing:.05em;">Час</div>
+          </div>
+          <!-- Клас — прихований коли нема тестів -->
+          <div id="dashClassWrap" style="display:none;background:rgba(37,99,235,.1);border:1.5px solid rgba(37,99,235,.28);border-radius:9px;padding:5px 14px;text-align:center;min-width:64px;">
+            <div id="dashClass" style="font-size:1.4rem;font-weight:800;color:var(--blue);line-height:1;">—</div>
+            <div style="font-size:.62rem;font-weight:700;color:rgba(37,99,235,.6);text-transform:uppercase;letter-spacing:.05em;">Клас</div>
+          </div>
           <div style="background:rgba(22,163,74,.12);border:1.5px solid rgba(22,163,74,.3);border-radius:9px;padding:5px 13px;text-align:center;min-width:64px;">
             <div style="font-size:1.4rem;font-weight:800;color:#16a34a;line-height:1;" id="dashDone">0</div>
             <div style="font-size:.62rem;font-weight:700;color:rgba(22,163,74,.7);text-transform:uppercase;letter-spacing:.05em;">Здали</div>
@@ -1927,11 +1937,10 @@ function _startElapsedTimer(){
       if(s?.startedAt)el.textContent='⏱ '+_fmtElapsed(s.startedAt);
     });
     // В огляді — оновлюємо dash timer badges
-    document.querySelectorAll('[id^="dt-"]').forEach(el=>{
-      const sid=el.id.replace('dt-','');
-      const s=(_lastActiveSnap||{})[sid];
-      if(s?.startedAt)el.textContent='⏱ '+_fmtElapsed(s.startedAt);
-    });
+    // Оновлюємо dashTimer (в Огляді) — з першого активного тесту
+    const _active=Object.entries(_lastActiveSnap||{}).filter(([,s])=>s.status==='active');
+    const _dtEl=el('dashTimer');
+    if(_dtEl&&_active.length){const [,_fs]=_active[0];if(_fs.startedAt)_dtEl.textContent=_fmtElapsed(_fs.startedAt);}
   },30000); // кожні 30с для точності
 }
 
@@ -2857,6 +2866,20 @@ function renderDashLiveProgress(){
   if(dDone)dDone.textContent=totalDone;
   if(dInProg)dInProg.textContent=totalInProg;
   if(dTotal)dTotal.textContent=totalAll;
+  // Таймер і клас — беремо з першого активного тесту
+  const dTimerWrap=el('dashTimerWrap'),dTimer=el('dashTimer');
+  const dClassWrap=el('dashClassWrap'),dClass=el('dashClass');
+  if(active.length){
+    const [,firstS]=active[0];
+    const cls=firstS.launchClass||firstS.cls||'';
+    if(dTimerWrap)dTimerWrap.style.display='';
+    if(dTimer)dTimer.textContent=_fmtElapsed(firstS.startedAt)||'—';
+    if(cls&&dClassWrap){dClassWrap.style.display='';if(dClass)dClass.textContent=cls;}
+    else if(dClassWrap)dClassWrap.style.display='none';
+  } else {
+    if(dTimerWrap)dTimerWrap.style.display='none';
+    if(dClassWrap)dClassWrap.style.display='none';
+  }
   if(!active.length){
     dlp.innerHTML='<div class="empty-state" style="padding:20px;"><div class="esi">🟢</div><p>Немає активних тестів</p></div>';
     return;
@@ -2868,12 +2891,11 @@ function renderDashLiveProgress(){
     const inProg=entries.filter(p=>p.status!=='done'&&(p.current>0||p.status==='active')).length;
     const waiting=entries.filter(p=>!p.status||p.status==='waiting'||(!p.current&&p.status!=='done')).length;
     if(!entries.length)return`<div style="padding:8px 0;font-size:.82rem;color:rgba(26,26,46,.4);">${s.title||'Тест'} — учні ще не приєдналися</div>`;
+    const sessionCls=s.launchClass||s.cls||'';
     return`<div style="margin-bottom:16px;">
       <div style="margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;">
           <div style="font-weight:700;font-size:.88rem;">${s.title||'Тест'}</div>
-          ${s.cls?`<span style="background:rgba(37,99,235,.12);color:var(--blue);border:1.5px solid rgba(37,99,235,.25);border-radius:20px;padding:2px 11px;font-size:.7rem;font-weight:700;">🏫 ${s.cls}</span>`:''}
-          <span id="dt-${sid}" style="background:rgba(22,163,74,.1);color:#16a34a;border:1.5px solid rgba(22,163,74,.22);border-radius:20px;padding:2px 11px;font-size:.7rem;font-weight:700;font-variant-numeric:tabular-nums;">⏱ ${_fmtElapsed(s.startedAt)}</span>
         </div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;">
           <span style="background:rgba(22,163,74,.12);color:#16a34a;border:1px solid rgba(22,163,74,.25);padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700;">✅ ${done} здали</span>
