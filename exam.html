@@ -269,6 +269,40 @@ function loadExamTheme(){
   }
 })();
 
+// ══ БЛОКУВАННЯ TELEGRAM / ВБУДОВАНИХ WEBVIEW ══
+(function(){
+  const ua=navigator.userAgent||'';
+  // Telegram ін'єктує window.Telegram.WebApp у всі свої WebView
+  const isTgObj=!!(window.Telegram?.WebApp||window.TelegramWebviewProxy);
+  // UA-рядки Telegram WebView (Android і iOS)
+  const isTgUa=/\bTelegram\b/i.test(ua)||/TelegramBot/i.test(ua);
+  // Загальні вбудовані WebView (Instagram, Facebook, TikTok, Snapchat тощо)
+  // На Android вбудований WebView не має 'Chrome' АБО має 'wv'
+  const isAndroidWV=(/Android/i.test(ua))&&(/wv\b/.test(ua)||!/Chrome/i.test(ua));
+  // iOS WebView — є WebKit але немає Safari в UA (Safari додає "Safari/xxx")
+  const isIosWV=(/iPhone|iPad|iPod/i.test(ua))&&/WebKit/i.test(ua)&&!/Safari/i.test(ua);
+  // Відомі in-app браузери соцмереж
+  const isSocialWV=/FBAN|FBAV|Instagram|Line\/|Snapchat|TikTok|Pinterest/i.test(ua);
+
+  if(isTgObj||isTgUa||isAndroidWV||isIosWV||isSocialWV){
+    const isIos=/iPhone|iPad|iPod/i.test(ua);
+    const hint=isIos
+      ?'Натисніть ••• → «Відкрити у Safari»'
+      :'Натисніть ⋮ → «Відкрити у Chrome» або скопіюйте посилання';
+    document.addEventListener('DOMContentLoaded',()=>{
+      document.body.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f5f0e8;font-family:system-ui;padding:20px;">
+        <div style="text-align:center;max-width:340px;">
+          <div style="font-size:3rem;margin-bottom:16px;">🌐</div>
+          <h2 style="font-size:1.15rem;font-weight:800;margin-bottom:10px;color:#1a1a2e;">Відкрийте у браузері</h2>
+          <p style="font-size:.84rem;color:rgba(26,26,46,.55);line-height:1.7;margin-bottom:18px;">Тест не можна проходити у вбудованому браузері Telegram або соціальних мереж — захист від списування тут не працює.</p>
+          <div style="background:rgba(37,99,235,.08);border-radius:10px;padding:12px 16px;font-size:.82rem;color:#1e3a5f;font-weight:600;">${hint}</div>
+        </div>
+      </div>`;
+    });
+    throw new Error('Unsupported WebView environment');
+  }
+})();
+
 // ══ КРИПТО — AES-GCM 256 ══
 async function _aesKey(raw){
   const enc=new TextEncoder();
@@ -574,6 +608,31 @@ function _launchExam(){
   sendProgress({name:studentName,cls:studentClass,current:1,total:examQs.length,status:'active',pct:null});
 }
 
+// ══ ZERO-WIDTH ОБФУСКАЦІЯ — захист від TTS / ШІ-зчитування / OCR ══
+// Вставляє невидимі Unicode-символи між кожним символом тексту.
+// Людське око не бачить різниці. TTS, копіювання і ШІ-агенти отримують кашу.
+const _ZW=['\u200B','\u200C','\u200D','\uFEFF','\u2060'];
+function _zwObfuscate(str){
+  if(!str)return str;
+  // Не обфускуємо порожні рядки та рядки з лише пробілами
+  const s=String(str);
+  let out='';
+  for(let i=0;i<s.length;i++){
+    out+=s[i];
+    // Вставляємо випадковий ZW-символ після кожного видимого символу (крім останнього)
+    if(i<s.length-1)out+=_ZW[(i*7+s.charCodeAt(i))%_ZW.length];
+  }
+  return out;
+}
+// Обгортка: escapes HTML і потім обфускує (тільки якщо увімкнено s-zwc)
+function sec(str){
+  if(!str)return'';
+  const escaped=e(str);
+  // payload може бути null під час intro — тоді обфускуємо за замовчуванням
+  if(payload&&payload.secSettings&&payload.secSettings.zwc===false)return escaped;
+  return _zwObfuscate(escaped);
+}
+
 // ── RENDER QUESTION ──
 function renderQ(){
   _qStartTime=Date.now();
@@ -588,7 +647,7 @@ function renderQ(){
     const img=q.optionImages?.[oi];
     const cb=multi?`<span class="opt-cb" id="cb${oi}"></span>`:'';
     return`<div class="opt" id="opt${oi}">
-      ${cb}${img?`<img src="${e(img)}" class="opt-img" onerror="this.style.display='none'">`:''}<div class="opt-txt">${e(o)||'...'}</div>
+      ${cb}${img?`<img src="${e(img)}" class="opt-img" onerror="this.style.display='none'">`:''}<div class="opt-txt">${sec(o)||'...'}</div>
     </div>`;
   }).join('');
 
@@ -597,7 +656,7 @@ function renderQ(){
       <div class="glass q-card">
         ${payload.timerMode==='perq'?`<div class="perq-timer" id="perqTimer">${perqLeft}с</div>`:''}
         ${q.imageUrl?`<img src="${e(q.imageUrl)}" class="q-img" onerror="this.style.display='none'">`:''} 
-        <div class="q-text">${e(q.text)||'(без тексту)'}</div>
+        <div class="q-text">${sec(q.text)||'(без тексту)'}</div>
         ${multi?`<div class="multi-hint">Оберіть всі правильні варіанти і натисніть «Підтвердити»</div>`:''}
         <div id="optsWrap">${optsHtml}</div>
         ${multi?`<button class="confirm-btn" id="confirmBtn" onclick="confirmMulti()">✓ Підтвердити відповідь</button>`:''}
@@ -727,6 +786,14 @@ let _pipCheckInt=null;
 let _vvCheckInt=null;
 let _pageHideTs=0;
 
+// ── ColorOS / MIUI / OxygenOS — додаткові змінні ──
+let _basePixelRatio=window.devicePixelRatio||1;
+let _baseBodyW=0,_baseBodyH=0;
+let _resizeObs=null;
+let _colorosCheckInt=null;
+let _notifBarTimer=null;
+let _touchStartY=0;
+
 function attachSecurity(){
   const sec=payload.secSettings||{};
   if(sec.tab){
@@ -818,6 +885,85 @@ function attachSecurity(){
     },1200);
   }
 
+  // ══ ColorOS / MIUI / OxygenOS ЗАХИСТИ ══
+
+  // C1. ResizeObserver на body — ловить float-вікна ColorOS що не змінюють window.innerWidth
+  if(sec.tab&&sec.coloros&&window.ResizeObserver){
+    _baseBodyW=document.body.offsetWidth;
+    _baseBodyH=document.body.offsetHeight;
+    // Затримка 1.5с щоб не зловити первинний layout
+    setTimeout(()=>{
+      if(!examActive||_resultSubmitted)return;
+      _baseBodyW=document.body.offsetWidth;
+      _baseBodyH=document.body.offsetHeight;
+      _resizeObs=new ResizeObserver(entries=>{
+        if(!examActive||_resultSubmitted)return;
+        if(Date.now()-_lastSplitViol<5000)return;
+        for(const en of entries){
+          const {width,height}=en.contentRect;
+          // Якщо body раптово став менше ніж 60% від базового — float-вікно
+          if(_baseBodyW>0&&width/_baseBodyW<0.60){
+            _lastSplitViol=Date.now();
+            violation('Розділений екран','Виявлено зміну розміру вікна — можливо активовано плаваюче вікно.');
+            break;
+          }
+          if(_baseBodyH>0&&height/_baseBodyH<0.55){
+            _lastSplitViol=Date.now();
+            violation('Розділений екран','Виявлено зменшення висоти вікна — можливо активовано розділений екран.');
+            break;
+          }
+        }
+      });
+      _resizeObs.observe(document.body);
+    },1500);
+  }
+
+  // C2. devicePixelRatio моніторинг — ColorOS змінює DPR при деяких float-режимах
+  if(sec.tab&&sec.coloros){
+    _basePixelRatio=window.devicePixelRatio||1;
+    _colorosCheckInt=setInterval(()=>{
+      if(!examActive||_resultSubmitted)return;
+      if(Date.now()-_lastSplitViol<5000)return;
+      const curDPR=window.devicePixelRatio||1;
+      // Значна зміна DPR під час тесту — ознака масштабування або float-режиму
+      if(Math.abs(curDPR-_basePixelRatio)>0.4){
+        _lastSplitViol=Date.now();
+        violation('Плаваюче вікно','Виявлено зміну масштабу екрана — можливо активовано плаваюче вікно ColorOS.');
+      }
+    },900);
+  }
+
+  // C3. Верхня шторка — touchstart з малим clientY (свайп зверху вниз)
+  // Спрацьовує ПІСЛЯ того як фокус втрачено (шторка відкрилась)
+  if(sec.tab&&sec.coloros){
+    const _onTouchStart=ev=>{
+      if(!examActive||_resultSubmitted)return;
+      const t=ev.touches[0];
+      if(t)_touchStartY=t.clientY;
+    };
+    const _onTouchEnd=ev=>{
+      if(!examActive||_resultSubmitted)return;
+      const t=ev.changedTouches[0];
+      if(!t)return;
+      const dy=t.clientY-_touchStartY;
+      // Свайп вниз від самого верху (y < 25px) на довжину > 60px — підозра на шторку
+      if(_touchStartY<25&&dy>60){
+        clearTimeout(_notifBarTimer);
+        _notifBarTimer=setTimeout(()=>{
+          if(!examActive||_resultSubmitted)return;
+          // Перевіряємо чи фокус справді втрачено — якщо так, це шторка
+          if(!document.hasFocus()&&Date.now()-_lastFocusViol>2000){
+            _lastFocusViol=Date.now();
+            violation('Верхня шторка','Виявлено відкриття панелі сповіщень під час тесту.');
+            if(payload.secSettings?.blur)blurBody(true);
+          }
+        },400);
+      }
+    };
+    document.addEventListener('touchstart',_onTouchStart,{passive:true});
+    document.addEventListener('touchend',_onTouchEnd,{passive:true});
+  }
+
   // 5. VisualViewport advanced — висота без фокусу на input
   if(sec.tab&&window.visualViewport){
     _vvCheckInt=setInterval(()=>{
@@ -860,9 +1006,16 @@ function checkSplitScreen(){
   }
   if(window.visualViewport){
     const vv=window.visualViewport;
+    // Стандартна перевірка ширини
     if((vv.width*vv.scale)/sw<0.5){
       _lastSplitViol=Date.now();
       violation('Плаваюче вікно','Виявлено плаваюче або накладне вікно.');
+      return;
+    }
+    // ColorOS: scale відхиляється від 1.0 при float-режимі
+    if(Math.abs(vv.scale-1.0)>0.25){
+      _lastSplitViol=Date.now();
+      violation('Плаваюче вікно','Виявлено масштабування вікна — можливо активовано float-режим ColorOS.');
     }
   }
 }
@@ -870,9 +1023,12 @@ function detachSecurity(){
   clearInterval(_splitCheckInt);_splitCheckInt=null;
   clearInterval(_pipCheckInt);_pipCheckInt=null;
   clearInterval(_vvCheckInt);_vvCheckInt=null;
+  clearInterval(_colorosCheckInt);_colorosCheckInt=null;
   clearTimeout(_blurTimer);_blurTimer=null;
   clearTimeout(_fsExitViolTimer);_fsExitViolTimer=null;
   clearTimeout(_rafPauseTimer);_rafPauseTimer=null;
+  clearTimeout(_notifBarTimer);_notifBarTimer=null;
+  if(_resizeObs){_resizeObs.disconnect();_resizeObs=null;}
   if(_rafId){cancelAnimationFrame(_rafId);_rafId=null;}
   if(window.visualViewport)window.visualViewport.removeEventListener('resize',checkSplitScreen);
   document.removeEventListener('visibilitychange',onVis);

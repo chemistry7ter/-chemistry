@@ -12,6 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ══ THEME VARS (overridden by settings) ══ */
 :root{
@@ -616,7 +617,7 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <select id="resFilter" style="width:auto;font-size:.78rem;padding:5px 9px;" onchange="renderResultsPage()"><option value="">Всі тести</option></select>
         <select id="resClassFilter" style="width:auto;font-size:.78rem;padding:5px 9px;" onchange="renderResultsPage()"><option value="">Всі класи</option></select>
-        <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportXLSX()">⬇ XLSX</button>
         <button class="btn btn-outline btn-sm" onclick="exportResultsPDF()" style="color:#dc2626;border-color:rgba(220,38,38,.3);">📄 PDF</button>
         <button class="btn btn-danger btn-sm" onclick="clearResults()">🗑</button>
       </div>
@@ -635,7 +636,7 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
     <div class="flex-btw" style="margin-bottom:10px;">
       <div style="font-size:1.1rem;font-weight:800;">🗂 Архів — перенесено у журнал</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-outline btn-sm" onclick="exportArchiveCSV()">⬇ CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportArchiveXLSX()">⬇ XLSX</button>
         <button class="btn btn-outline btn-sm" onclick="exportArchivePDF()" style="color:#dc2626;border-color:rgba(220,38,38,.3);">📄 PDF</button>
         <button class="btn btn-danger btn-sm" onclick="clearArchive()">🗑 Очистити архів</button>
       </div>
@@ -722,6 +723,8 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
         <div class="tog-row"><label class="tog"><input type="checkbox" id="s-shuffle" checked><span class="tog-tr"></span></label><div><div class="tl">Перемішати питання і варіанти</div><div class="td2">Кожен учень бачить різний порядок</div></div></div>
         <div class="tog-row"><label class="tog"><input type="checkbox" id="s-fullscreen" checked><span class="tog-tr"></span></label><div><div class="tl">📱 Повноекранний режим</div><div class="td2">Примусовий fullscreen на мобільних. Вихід = порушення</div></div></div>
         <div class="tog-row"><label class="tog"><input type="checkbox" id="s-raf" checked><span class="tog-tr"></span></label><div><div class="tl">📱 RAF-детектор шторки</div><div class="td2">Виявляє зупинку браузера — шторка сповіщень, інший додаток</div></div></div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-coloros" checked><span class="tog-tr"></span></label><div><div class="tl">📱 Захист ColorOS / MIUI</div><div class="td2">ResizeObserver + DPR + touchstart — ловить float-вікна та шторку на Oppo/Realme/Xiaomi</div></div></div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-zwc" checked><span class="tog-tr"></span></label><div><div class="tl">🤖 Захист від ШІ-зчитування</div><div class="td2">Невидимі символи між літерами — TTS, голосові асистенти та ШІ-агенти читають кашу</div></div></div>
         <div class="divider"></div>
         <div class="fg"><label class="fl">Макс. порушень до завершення</label><input type="number" id="s-maxviol" value="3" min="1" max="20"></div>
       </div>
@@ -748,82 +751,139 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
-      <!-- Ліва колонка: Акаунт + Тема -->
-      <div>
+
+      <!-- КОЛОНКА 1: Акаунт + Тема -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Акаунт -->
         <div class="card">
           <div class="card-title">🔑 Акаунт вчителя</div>
-          <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.15);border-radius:9px;padding:10px 13px;font-size:.76rem;color:rgba(37,99,235,.8);margin-bottom:14px;line-height:1.6;">
-            🔐 Захист через Firebase Authentication. Пароль зберігається на серверах Google — не в браузері.
+          <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.14);border-radius:9px;padding:10px 13px;font-size:.75rem;color:rgba(37,99,235,.85);margin-bottom:14px;line-height:1.6;">
+            🔐 Авторизація через Firebase Authentication. Пароль зберігається на серверах Google.
           </div>
-          <div style="padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px;">
-            <div style="font-size:.67rem;font-weight:700;color:rgba(26,26,46,.42);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">Поточний email</div>
-            <div id="currentEmailDisplay" style="font-size:.88rem;font-weight:700;color:var(--blue);">—</div>
+          <div style="padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:14px;">
+            <div style="font-size:.65rem;font-weight:700;color:rgba(26,26,46,.38);text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px;">Поточний акаунт</div>
+            <div id="currentEmailDisplay" style="font-size:.9rem;font-weight:700;color:var(--blue);">—</div>
           </div>
           <div class="fg"><label class="fl">Новий пароль (мін. 6 символів)</label><input type="password" id="sNewPass" placeholder="••••••••"></div>
-          <div class="fg"><label class="fl">Підтвердити</label><input type="password" id="sNewPass2"></div>
-          <div id="sMsg" style="font-size:.8rem;margin-bottom:9px;"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="saveAuthSettings()">💾 Змінити пароль</button>
-            <button class="btn btn-outline" onclick="sendResetEmail()">📧 Скинути через email</button>
+          <div class="fg"><label class="fl">Підтвердити пароль</label><input type="password" id="sNewPass2" placeholder="••••••••"></div>
+          <div id="sMsg" style="font-size:.79rem;min-height:18px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveAuthSettings()">💾 Змінити пароль</button>
+            <button class="btn btn-outline" style="flex:1;" onclick="sendResetEmail()">📧 Скинути email</button>
           </div>
         </div>
+
+        <!-- Тема -->
         <div class="card">
           <div class="card-title">🎨 Тема оформлення</div>
-          <div class="fg"><label class="fl">Колір панелі навігації</label>
-            <input type="color" id="themeColor" value="#1a1a2e" oninput="applyTheme()">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div class="fg" style="margin:0;">
+              <label class="fl">Колір навігації</label>
+              <input type="color" id="themeColor" value="#1a1a2e" oninput="applyTheme()">
+            </div>
+            <div class="fg" style="margin:0;">
+              <label class="fl">Акцентний колір</label>
+              <input type="color" id="themeAccent" value="#c84b31" oninput="applyTheme()">
+            </div>
           </div>
-          <div class="fg"><label class="fl">Акцентний колір</label>
-            <input type="color" id="themeAccent" value="#c84b31" oninput="applyTheme()">
-          </div>
-          <div class="fg"><label class="fl">Логотип (emoji або URL)</label>
+          <div class="fg"><label class="fl">Логотип (emoji або URL картинки)</label>
             <input type="text" id="themeLogo" placeholder="🧪 або https://…/logo.png" oninput="applyTheme()">
           </div>
           <div class="fg"><label class="fl">Назва системи</label>
             <input type="text" id="themeName" placeholder="SecureQuiz" oninput="applyTheme()">
           </div>
-          <div style="display:flex;gap:7px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="saveTheme()">💾 Зберегти тему</button>
-            <button class="btn btn-outline" onclick="resetTheme()">↺ Скинути</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveTheme()">💾 Зберегти тему</button>
+            <button class="btn btn-outline" style="flex:1;" onclick="resetTheme()">↺ Скинути</button>
           </div>
         </div>
+
       </div>
-      <!-- Права колонка: Firebase Rules (вужча — 55% ширини через max-width) -->
-      <div style="max-width:55%;">
+
+      <!-- КОЛОНКА 2: Firebase Rules + Інструкція -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Firebase Rules -->
         <div class="card">
           <div class="card-title">🔥 Firebase Rules</div>
-          <!-- Статус підключення -->
-          <div id="fbStatus" style="font-size:.8rem;margin-bottom:10px;"></div>
-          <div style="background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);border-radius:8px;padding:9px 12px;font-size:.73rem;line-height:1.65;margin-bottom:10px;">
-            <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);font-weight:700;">Firebase Console</a> → ваш проєкт → Realtime Database → <strong>Rules</strong> → вставте → <strong>Publish</strong>
+          <div id="fbStatus" style="font-size:.78rem;margin-bottom:10px;min-height:18px;"></div>
+
+          <!-- Інструкція -->
+          <div style="display:flex;gap:6px;align-items:flex-start;background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);border-radius:9px;padding:10px 12px;font-size:.74rem;line-height:1.65;margin-bottom:12px;">
+            <span style="font-size:1rem;flex-shrink:0;margin-top:1px;">ℹ️</span>
+            <span>
+              <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);font-weight:700;">Firebase Console</a>
+              → ваш проєкт → Realtime Database → <strong>Rules</strong> → замініть вміст → <strong>Publish</strong>
+            </span>
           </div>
-          <div id="fbRulesBox" style="background:var(--paper2);border-radius:8px;padding:10px;font-family:monospace;font-size:.67rem;line-height:1.75;white-space:pre;overflow-x:auto;margin-bottom:8px;user-select:text;cursor:text;">{
+
+          <!-- Що захищено -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+            <div style="background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.18);border-radius:8px;padding:8px 10px;font-size:.71rem;line-height:1.6;">
+              <div style="font-weight:700;color:#16a34a;margin-bottom:3px;">✅ Захищено</div>
+              <div style="color:rgba(26,26,46,.6);">• Учні не бачать чужих відповідей<br>• Результат тільки з реального тесту<br>• Бібліотека і конфіг — тільки вчитель<br>• Тема доступна без авторизації</div>
+            </div>
+            <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px 10px;font-size:.71rem;line-height:1.6;">
+              <div style="font-weight:700;color:#d97706;margin-bottom:3px;">📋 Логіка доступу</div>
+              <div style="color:rgba(26,26,46,.6);">• sessions — читає будь-хто за SID<br>• participants — пише учень, читає вчитель<br>• results — пише учень одноразово<br>• sessionId перевіряється в базі</div>
+            </div>
+          </div>
+
+          <!-- Rules box -->
+          <div id="fbRulesBox" style="background:var(--paper2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-family:monospace;font-size:.66rem;line-height:1.75;white-space:pre;overflow-x:auto;margin-bottom:10px;user-select:text;cursor:text;">{
   "rules": {
     "sessions": {
-      ".read": true,
-      ".write": "auth != null",
       "$sid": {
+        ".read": true,
+        ".write": "auth != null",
         ".validate": "newData.hasChildren(['sessionId','title','status'])",
         "participants": {
           "$pid": {
+            ".read": "auth != null",
             ".write": true,
-            ".validate": "newData.hasChildren(['name'])"
+            ".validate": "newData.hasChildren(['name']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length &lt; 100"
           }
         }
       }
     },
     "results": {
       ".read": "auth != null",
+      ".write": "auth != null",
       "$rid": {
-        ".write": "!data.exists() && newData.hasChildren(['sessionId','student','pct','ts']) && newData.child('pct').isNumber() && newData.child('pct').val() >= 0 && newData.child('pct').val() <= 100 && (now - newData.child('ts').val()) &lt; 300000",
-        ".validate": "newData.child('student').isString() && newData.child('student').val().length > 0 && newData.child('student').val().length &lt; 100"
+        ".write": "auth != null || (!data.exists() && newData.hasChildren(['sessionId','student','pct','ts']) && newData.child('pct').isNumber() && newData.child('pct').val() >= 0 && newData.child('pct').val() &lt;= 100 && (now - newData.child('ts').val()) &lt; 300000 && root.child('sessions').child(newData.child('sessionId').val()).exists())",
+        ".validate": "!newData.exists() || (newData.child('student').isString() && newData.child('student').val().length > 0 && newData.child('student').val().length &lt; 100)"
       }
     },
-    "library":  { ".read": "auth != null", ".write": "auth != null" },
-    "config":   { ".read": "auth != null", ".write": "auth != null" }
+    "library": { ".read": "auth != null", ".write": "auth != null" },
+    "config": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "theme": { ".read": true }
+    }
   }
 }</div>
-          <button class="btn btn-outline btn-sm" onclick="copyFirebaseRules()">📋 Скопіювати Rules</button>
+          <button class="btn btn-outline btn-sm" style="width:100%;" onclick="copyFirebaseRules()">📋 Скопіювати Rules у буфер обміну</button>
         </div>
+
+        <!-- Довідка про безпеку -->
+        <div class="card">
+          <div class="card-title">📱 Захист на смартфонах</div>
+          <div style="font-size:.78rem;line-height:1.85;color:rgba(26,26,46,.7);">
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:baseline;">
+              <span style="font-weight:700;color:var(--primary);">Водяний знак</span><span>Ім'я учня поверх тесту — видно на будь-якому фото екрана.</span>
+              <span style="font-weight:700;color:var(--primary);">Fullscreen</span><span>Примусовий повноекранний режим. Вихід = порушення. Chrome Android; Safari iOS — обмежено.</span>
+              <span style="font-weight:700;color:var(--primary);">RAF-детектор</span><span>Виявляє шторку сповіщень і перехід в інший додаток через паузу анімації.</span>
+              <span style="font-weight:700;color:var(--primary);">ColorOS / MIUI</span><span>ResizeObserver + DPR + touchstart — ловить float-вікна Oppo, Realme, Xiaomi.</span>
+              <span style="font-weight:700;color:var(--primary);">Захист ШІ</span><span>ZW-символи між літерами — TTS, Google Assistant і ШІ-агенти отримують кашу.</span>
+              <span style="font-weight:700;color:var(--primary);">Інкогніто</span><span>StorageManager API визначає приватний режим Chrome / Firefox.</span>
+            </div>
+            <div style="margin-top:10px;padding:8px 10px;background:rgba(239,68,68,.06);border-radius:7px;font-size:.7rem;color:rgba(26,26,46,.45);">
+              ⚠️ Жоден браузер не може повністю заблокувати системний знімок екрана — це обмеження ОС.
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -1480,7 +1540,7 @@ function loadGradeSettings(){
   });
 }
 function renderCreatorPanel(){
-  const checks=['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf'];
+  const checks=['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf','s-coloros','s-zwc'];
   const labels={
     's-tab':'👁 Вкладки',
     's-blur':'🌫 Розмиття',
@@ -1491,6 +1551,8 @@ function renderCreatorPanel(){
     's-shuffle':'🔀 Перемішати',
     's-fullscreen':'📱 Fullscreen',
     's-raf':'📡 RAF-детектор',
+    's-coloros':'📱 ColorOS',
+    's-zwc':'🤖 Захист ШІ',
     's-mood':'🎭 Настрій'
   };
   const sp=el('crSec');
@@ -1715,7 +1777,7 @@ async function _doLaunch(launchClass){
     launchClass:launchClass,
     encQ,                    // зашифровані питання
     // questions НЕ зберігаємо відкрито
-    secSettings:{tab:getSec('s-tab'),blur:getSec('s-blur'),ctx:getSec('s-ctx'),copy:getSec('s-copy'),prtsc:getSec('s-prtsc'),wm:getSec('s-wm'),shuffle:getSec('s-shuffle'),fullscreen:getSec('s-fullscreen'),raf:getSec('s-raf'),mood:getSec('s-mood'),maxviol:getSecVal('s-maxviol')},
+    secSettings:{tab:getSec('s-tab'),blur:getSec('s-blur'),ctx:getSec('s-ctx'),copy:getSec('s-copy'),prtsc:getSec('s-prtsc'),wm:getSec('s-wm'),shuffle:getSec('s-shuffle'),fullscreen:getSec('s-fullscreen'),raf:getSec('s-raf'),mood:getSec('s-mood'),coloros:getSec('s-coloros'),zwc:getSec('s-zwc'),maxviol:getSecVal('s-maxviol')},
     grades:getGrades().map(g=>({...g})),
     finishOnAll:false,
     finishOnTime:autoStop,
@@ -2120,7 +2182,7 @@ function renderResultsPage(){
           </div>
         </div>
         <div class="res-badge" style="background:${grade.c};">${grade.l}</div>
-        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportSessionCSV('${sid}')" title="CSV">⬇CSV</button>
+        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportSessionXLSX('${sid}')" title="XLSX">⬇XLSX</button>
         <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="event.stopPropagation();exportSessionPDF('${sid}')" title="PDF">📄PDF</button>
         <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;background:${isJournaled?'rgba(22,163,74,.12)':'transparent'};color:var(--green);border-color:rgba(22,163,74,.35);" onclick="event.stopPropagation();quickToggleJournal('${sid}')" title="Перенести у журнал" id="qjbtn-${sid.replace(/\W/g,'_')}">${isJournaled?'✓ У журналі':'📋 Журнал'}</button>
         <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation();clearSessionResults('${sid}')" title="Видалити">🗑</button>
@@ -2318,12 +2380,155 @@ function delResult(i){
   localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache));
   renderResultsPage(); updateResFilter(); renderDash();
 }
-function exportCSV(){
-  const rs=getResults();if(!rs.length){toast('Немає даних');return;}
-  downloadCSV(rs,'results_all.csv');
+// ══ XLSX EXPORT (SheetJS) ══
+function _getXLSX(){
+  if(typeof XLSX!=='undefined')return XLSX;
+  toast('⚠️ SheetJS завантажується, спробуйте ще раз');return null;
 }
 
-// ── PDF EXPORT ──
+function _buildXLSX(rs, sheetTitle){
+  const X=_getXLSX();if(!X)return;
+
+  // ── Аркуш 1: Результати ──
+  const COLS=['Прізвище та імʼя','Клас','Тест','Дата','Час старту','Правильних','Всього','Балів','Відсоток','Оцінка','Порушень'];
+  const rows=rs.map(r=>{
+    const ts=r.ts?new Date(r.ts):null;
+    const dateStr=ts?ts.toLocaleDateString('uk-UA'):(r.date||'');
+    const timeStr=ts?ts.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
+    return[
+      r.student||'',
+      r.cls||r.launchClass||'',
+      r.test||'',
+      dateStr,
+      timeStr,
+      r.correct??'',
+      r.total??'',
+      typeof r.earned==='number'?r.earned:'',
+      typeof r.pct==='number'?r.pct/100:'',  // SheetJS зберігає як число, форматуємо нижче
+      r.grade||'',
+      r.violations??0
+    ];
+  });
+
+  // Рядок-шапка сесії (якщо всі з однієї сесії)
+  const sessions=[...new Set(rs.map(r=>r.sessionId||r.test||'?'))];
+  const titleRows=[];
+  if(sessions.length===1){
+    const r0=rs[0];
+    const cls=rs.find(x=>x.launchClass)?.launchClass||r0.cls||'';
+    const avg=Math.round(rs.reduce((a,r)=>a+r.pct,0)/rs.length);
+    titleRows.push([r0.test||'Тест',(cls?'Клас: '+cls:''),`${rs.length} учнів`,'Середній %: '+avg+'%']);
+    titleRows.push([]);
+  }
+
+  const wsData=[...titleRows,[...COLS],...rows];
+
+  // Підсумковий рядок
+  if(rs.length>1){
+    const avg=Math.round(rs.reduce((a,r)=>a+r.pct,0)/rs.length);
+    const avgBal=rs.filter(r=>typeof r.earned==='number').length
+      ?(rs.reduce((a,r)=>a+(r.earned||0),0)/rs.filter(r=>typeof r.earned==='number').length).toFixed(1):'';
+    wsData.push([]);
+    wsData.push(['Підсумок: '+rs.length+' учнів','','','','','','',avgBal,avg/100,'','']);
+  }
+
+  const ws=X.utils.aoa_to_sheet(wsData);
+  const headerRow=titleRows.length;
+
+  // Ширини колонок
+  ws['!cols']=[{wch:28},{wch:8},{wch:24},{wch:11},{wch:10},{wch:10},{wch:8},{wch:7},{wch:10},{wch:8},{wch:9}];
+
+  // Заморозити перші два рядки (title + header) і колонку A
+  ws['!freeze']={xSplit:1,ySplit:headerRow+1};
+
+  // Форматування колонки % (I) як відсоток
+  const range=X.utils.decode_range(ws['!ref']||'A1');
+  for(let R=headerRow+1;R<=range.e.r;R++){
+    const cellAddr=X.utils.encode_cell({r:R,c:8});
+    if(ws[cellAddr]&&typeof ws[cellAddr].v==='number'){
+      ws[cellAddr].t='n';
+      ws[cellAddr].z='0%';
+    }
+  }
+
+  // ── Аркуш 2: Статистика ──
+  const statRows=[];
+  statRows.push(['Статистика по сесіях']);
+  statRows.push([]);
+  statRows.push(['Тест','Клас','Учнів','Середній %','Середній бал','Відмінників (≥90%)','Двієчників (≤33%)','Порушень всього']);
+  const bySession={};
+  rs.forEach(r=>{
+    const k=r.sessionId||r.test||'?';
+    if(!bySession[k])bySession[k]={title:r.test,cls:r.cls||r.launchClass||'',recs:[]};
+    bySession[k].recs.push(r);
+  });
+  Object.values(bySession).forEach(s=>{
+    const n=s.recs.length;
+    const avgP=Math.round(s.recs.reduce((a,r)=>a+r.pct,0)/n);
+    const avgB=s.recs.filter(r=>typeof r.earned==='number').length
+      ?(s.recs.reduce((a,r)=>a+(r.earned||0),0)/s.recs.filter(r=>typeof r.earned==='number').length).toFixed(1):'';
+    const hi=s.recs.filter(r=>r.pct>=90).length;
+    const lo=s.recs.filter(r=>r.pct<=33).length;
+    const viol=s.recs.reduce((a,r)=>a+(r.violations||0),0);
+    statRows.push([s.title,s.cls,n,avgP/100,avgB,hi,lo,viol]);
+  });
+
+  const ws2=X.utils.aoa_to_sheet(statRows);
+  ws2['!cols']=[{wch:26},{wch:8},{wch:7},{wch:13},{wch:13},{wch:16},{wch:16},{wch:15}];
+  // Форматування % у статистиці
+  const r2=X.utils.decode_range(ws2['!ref']||'A1');
+  for(let R=3;R<=r2.e.r;R++){
+    const ca=X.utils.encode_cell({r:R,c:3});
+    if(ws2[ca]&&typeof ws2[ca].v==='number'){ws2[ca].t='n';ws2[ca].z='0%';}
+  }
+
+  // ── Збираємо книгу ──
+  const wb=X.utils.book_new();
+  X.utils.book_append_sheet(wb,ws,sheetTitle||'Результати');
+  X.utils.book_append_sheet(wb,ws2,'Статистика');
+  return wb;
+}
+
+function _saveXLSX(wb,filename){
+  const X=_getXLSX();if(!X||!wb)return;
+  X.writeFile(wb,filename);
+  toast('📊 XLSX завантажено');
+}
+
+function _xlsxFilename(rs,prefix){
+  const test=(rs[0]?.test||'results').replace(/[^а-яА-ЯҐЄІЇa-zA-Z0-9]/g,'_');
+  const cls=(rs.find(r=>r.launchClass||r.cls)?.launchClass||rs[0]?.cls||'').replace(/[^а-яА-ЯҐЄІЇa-zA-Z0-9\-]/g,'');
+  const d=new Date().toISOString().slice(0,10);
+  return (prefix||'')+(cls?cls+'_':'')+test+'_'+d+'.xlsx';
+}
+
+function exportXLSX(){
+  const rs=getResults().filter(r=>{const st=getJournalState();return!st[r.sessionId||r.test||'?'];});
+  if(!rs.length){toast('Немає даних');return;}
+  const wb=_buildXLSX(rs,'Результати');
+  _saveXLSX(wb,'results_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+function exportSessionXLSX(sessionId){
+  const rs=getResults().filter(r=>(r.sessionId||r.test||'?')===sessionId);
+  if(!rs.length){toast('Немає даних');return;}
+  _saveXLSX(_buildXLSX(rs,'Результати'),_xlsxFilename(rs,''));
+}
+
+function exportArchiveXLSX(){
+  const st=getJournalState();
+  const rs=getResults().filter(r=>st[r.sessionId||r.test||'?']);
+  if(!rs.length){toast('Архів порожній');return;}
+  _saveXLSX(_buildXLSX(rs,'Архів'),'archive_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+function exportArchiveSessionXLSX(sessionId){
+  const rs=getResults().filter(r=>(r.sessionId||r.test||'?')===sessionId);
+  if(!rs.length){toast('Немає даних');return;}
+  _saveXLSX(_buildXLSX(rs,'Результати'),_xlsxFilename(rs,'archive_'));
+}
+
+
 function getJsPDF(){
   if(typeof window.jspdf!=='undefined')return window.jspdf.jsPDF;
   if(typeof window.jsPDF!=='undefined')return window.jsPDF;
@@ -2443,17 +2648,6 @@ function exportSessionPDF(sessionId){
   const fakeSessions={};
   fakeSessions[sessionId]={title:firstR.test,cls:sessionCls,records:rs};
   renderHTMLtoPDF(buildResultsHTML(fakeSessions),(firstR.test||'session').replace(/\s+/g,'_')+'_results.pdf');
-}
-function exportSessionCSV(sessionId){
-  const rs=getResults().filter(r=>(r.sessionId||r.test||'?')===sessionId);
-  if(!rs.length){toast('Немає даних');return;}
-  const name='results_'+(rs[0]?.test||'session').replace(/[^а-яА-ЯҐЄІЇa-zA-Z0-9]/g,'_')+'.csv';
-  downloadCSV(rs,name);
-}
-function downloadCSV(rs,filename){
-  const h='Учень,Клас,Тест,Дата,Бали,Всього,Відсоток,Оцінка,Порушення\n';
-  const rows=rs.map(r=>`"${r.student}","${r.cls||''}","${r.test}","${r.date}",${r.earned},${r.total},${r.pct}%,"${r.grade}",${r.violations}`).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+h+rows],{type:'text/csv;charset=utf-8;'}));a.download=filename;a.click();toast('📊 CSV завантажено');
 }
 
 // ══ MY CLASSES ══
@@ -2712,7 +2906,7 @@ function renderArchivePage(){
           </div>
         </div>
         <div class="res-badge" style="background:${grade.c};">${grade.l}</div>
-        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportArchiveSessionCSV('${sid}')" title="CSV">⬇CSV</button>
+        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportArchiveSessionXLSX('${sid}')" title="XLSX">⬇XLSX</button>
         <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="event.stopPropagation();exportArchiveSessionPDF('${sid}')" title="PDF">📄PDF</button>
         <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation();deleteArchiveSession('${sid}')" title="Видалити назавжди">🗑 Видалити</button>
         <span style="font-size:.75rem;color:rgba(26,26,46,.35);">▼</span>
@@ -2789,13 +2983,6 @@ function clearArchive(){
   toast('Архів очищено — сесії повернуто до Результатів');
 }
 
-function exportArchiveCSV(){
-  const st=getJournalState();
-  const rs=getResults().filter(r=>st[r.sessionId||r.test||'?']);
-  if(!rs.length){toast('Архів порожній');return;}
-  downloadCSV(rs,'archive_'+new Date().toISOString().slice(0,10)+'.csv');
-}
-
 function exportArchivePDF(){
   const st=getJournalState();
   const rs=getResults().filter(r=>st[r.sessionId||r.test||'?']);
@@ -2808,13 +2995,6 @@ function exportArchivePDF(){
     sessions[k].records.push(r);
   });
   renderHTMLtoPDF(buildResultsHTML(sessions),'archive_'+new Date().toISOString().slice(0,10)+'.pdf');
-}
-
-function exportArchiveSessionCSV(sid){
-  const rs=getResults().filter(r=>(r.sessionId||r.test||'?')===sid);
-  if(!rs.length){toast('Немає даних');return;}
-  const name='archive_'+(rs[0]?.test||'session').replace(/[^а-яА-ЯҐЄІЇa-zA-Z0-9]/g,'_')+'.csv';
-  downloadCSV(rs,name);
 }
 
 function exportArchiveSessionPDF(sid){
@@ -2979,10 +3159,10 @@ function _postAuthInit(){
   renderDash(); renderResultsPage(); updateResFilter(); updateLibFilters(); updateArchiveBadge();
   const saved=JSON.parse(localStorage.getItem('sqpro_sec')||'{}');
   if(saved.maxviol!==undefined){const e=el('s-maxviol');if(e)e.value=saved.maxviol;}
-  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf','finishOnTime'].forEach(id=>{
+  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf','s-coloros','s-zwc','finishOnTime'].forEach(id=>{
     if(saved[id]!==undefined){const e=el(id);if(e)e.checked=saved[id];}
   });
-  document.querySelectorAll('#s-tab,#s-blur,#s-ctx,#s-copy,#s-prtsc,#s-wm,#s-shuffle,#s-fullscreen,#s-raf,#finishOnTime,#s-maxviol').forEach(inp=>{
+  document.querySelectorAll('#s-tab,#s-blur,#s-ctx,#s-copy,#s-prtsc,#s-wm,#s-shuffle,#s-fullscreen,#s-raf,#s-coloros,#s-zwc,#finishOnTime,#s-maxviol').forEach(inp=>{
     inp.addEventListener('change',saveSecSettings);inp.addEventListener('input',saveSecSettings);
   });
   // s-mood зберігається окремо (елемент у конструкторі)
@@ -3012,24 +3192,33 @@ function copyFirebaseRules(){
   const rules=`{
   "rules": {
     "sessions": {
-      ".read": true,
-      ".write": "auth != null",
       "$sid": {
+        ".read": true,
+        ".write": "auth != null",
         ".validate": "newData.hasChildren(['sessionId','title','status'])",
         "participants": {
-          "$pid": { ".write": true, ".validate": "newData.hasChildren(['name'])" }
+          "$pid": {
+            ".read": "auth != null",
+            ".write": true,
+            ".validate": "newData.hasChildren(['name']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length < 100"
+          }
         }
       }
     },
     "results": {
       ".read": "auth != null",
+      ".write": "auth != null",
       "$rid": {
-        ".write": "!data.exists() && newData.hasChildren(['sessionId','student','pct','ts']) && newData.child('pct').isNumber() && newData.child('pct').val() >= 0 && newData.child('pct').val() <= 100 && (now - newData.child('ts').val()) < 300000",
-        ".validate": "newData.child('student').isString() && newData.child('student').val().length > 0 && newData.child('student').val().length < 100"
+        ".write": "auth != null || (!data.exists() && newData.hasChildren(['sessionId','student','pct','ts']) && newData.child('pct').isNumber() && newData.child('pct').val() >= 0 && newData.child('pct').val() <= 100 && (now - newData.child('ts').val()) < 300000 && root.child('sessions').child(newData.child('sessionId').val()).exists())",
+        ".validate": "!newData.exists() || (newData.child('student').isString() && newData.child('student').val().length > 0 && newData.child('student').val().length < 100)"
       }
     },
-    "library":  { ".read": "auth != null", ".write": "auth != null" },
-    "config":   { ".read": "auth != null", ".write": "auth != null" }
+    "library": { ".read": "auth != null", ".write": "auth != null" },
+    "config": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "theme": { ".read": true }
+    }
   }
 }`;
   navigator.clipboard.writeText(rules)
@@ -3039,7 +3228,7 @@ function copyFirebaseRules(){
 
 function saveSecSettings(){
   const data={maxviol:getSecVal('s-maxviol')};
-  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf','finishOnTime'].forEach(id=>{
+  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf','s-coloros','s-zwc','finishOnTime'].forEach(id=>{
     const e=el(id);if(e)data[id]=e.checked;
   });
   localStorage.setItem('sqpro_sec',JSON.stringify(data));
@@ -3062,6 +3251,8 @@ async function runSecAudit(){
   checks.push({label:'Перемішування питань',ok:getSec('s-shuffle'),info:getSec('s-shuffle')?'Кожен учень бачить інший порядок':'Рекомендуємо увімкнути'});
   checks.push({label:'📱 Повноекранний режим',ok:getSec('s-fullscreen'),info:getSec('s-fullscreen')?'Увімкнено — вихід з fullscreen = порушення':'Вимкнено (рекомендовано для мобільних)'});
   checks.push({label:'📱 RAF-детектор шторки',ok:getSec('s-raf'),info:getSec('s-raf')?'Увімкнено — виявляє шторку сповіщень':'Вимкнено (рекомендовано для мобільних)'});
+  checks.push({label:'📱 Захист ColorOS / MIUI',ok:getSec('s-coloros'),info:getSec('s-coloros')?'Увімкнено — ResizeObserver + DPR + touchstart':'Вимкнено (рекомендовано якщо учні на Oppo/Realme/Xiaomi)'});
+  checks.push({label:'🤖 Захист від ШІ-зчитування',ok:getSec('s-zwc'),info:getSec('s-zwc')?'Увімкнено — ZW-символи блокують TTS і ШІ-агентів':'Вимкнено (рекомендуємо увімкнути)'});
 
   if(db&&currentUser){
     try{
