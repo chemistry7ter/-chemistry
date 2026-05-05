@@ -26,7 +26,9 @@
   --logo-text:"SecureQuiz";
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--paper);color:var(--primary);min-height:100vh;}
+
+html{overflow-x:hidden;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--paper);color:var(--primary);min-height:100vh;overflow-x:hidden;}
 
 /* ── LOGIN ── */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--paper);}
@@ -70,7 +72,7 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 .sb-logout:hover{color:rgba(255,255,255,.7);}
 
 /* ── MAIN ── */
-.main{flex:1;margin-left:var(--sb);min-height:100vh;transition:margin-left .26s ease;}
+.main{flex:1;margin-left:var(--sb);min-height:100vh;transition:margin-left .26s ease;overflow-x:hidden;box-sizing:border-box;}
 .main.wide{margin-left:56px;}
 .topbar{background:var(--paper);border-bottom:1px solid var(--border);padding:11px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;gap:12px;}
 .topbar-left{display:flex;align-items:center;gap:10px;}
@@ -84,9 +86,11 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 .mob-overlay.show{display:block;}
 
 /* ── PAGES ── */
-.page{display:none;padding:22px;animation:fadeUp .2s ease;}
+.page{display:none;padding:22px;overflow-x:hidden;max-width:100%;box-sizing:border-box;}
 .page.active{display:block;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.page.active.anim{animation:fadeIn .15s ease both;}
+.page.active.no-anim{animation:none;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
 /* ── CARDS ── */
 .card{background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;margin-bottom:14px;}
@@ -140,17 +144,24 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 
 /* ── LIBRARY ── */
 .lib-cat-title{font-size:.88rem;font-weight:800;color:var(--primary2);margin-bottom:7px;padding:5px 12px;background:var(--paper2);border-radius:7px;display:flex;align-items:center;gap:7px;}
-.lib-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:11px;transition:var(--tr);}
+.lib-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:11px;transition:var(--tr);overflow:hidden;max-width:100%;}
 .lib-card:hover{box-shadow:var(--shadow);}
-.lib-icon{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;font-weight:800;color:#fff;}
-.lib-info{flex:1;min-width:0;}
-.lib-title{font-weight:700;font-size:.86rem;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.lib-meta{font-size:.68rem;color:rgba(26,26,46,.42);}
+.lib-icon{width:40px;height:40px;min-width:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;font-weight:800;color:#fff;}
+.lib-info{flex:1;min-width:0;overflow:hidden;}
+.lib-title{font-weight:700;font-size:.86rem;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.lib-meta{font-size:.68rem;color:rgba(26,26,46,.42);overflow-wrap:break-word;}
 .lib-tags{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;}
 .lib-tag{font-size:.6rem;font-weight:700;padding:1px 6px;border-radius:4px;}
 .lib-tag-sub{background:rgba(37,99,235,.1);color:var(--blue);}
 .lib-tag-cls{color:#fff;border-radius:5px;padding:1px 7px;}
-.lib-actions{display:flex;gap:4px;flex-shrink:0;}
+.lib-actions{display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;}
+@media(max-width:540px){
+  .lib-card{flex-wrap:wrap;align-items:flex-start;}
+  .lib-info{width:calc(100% - 51px);}
+  .lib-title{white-space:normal;word-break:break-word;overflow:visible;text-overflow:clip;}
+  .lib-actions{width:100%;justify-content:stretch;padding-top:6px;border-top:1px solid var(--border);margin-top:6px;}
+  .lib-actions .btn{flex:1;text-align:center;font-size:.78rem;padding:6px 4px;display:flex;align-items:center;justify-content:center;}
+}
 
 /* ── ACTIVE SESSIONS ── */
 .session-live{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;}
@@ -158,9 +169,9 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 .session-live-header:hover{background:var(--paper);}
 .live-dot{width:10px;height:10px;border-radius:50%;background:var(--green);animation:livepulse 1.5s infinite;flex-shrink:0;}
 @keyframes livepulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
-.live-info{flex:1;min-width:0;}
-.live-title{font-weight:700;font-size:.88rem;margin-bottom:2px;}
-.live-meta{font-size:.7rem;color:rgba(26,26,46,.42);}
+.live-info{flex:1;min-width:0;overflow:hidden;}
+.live-title{font-weight:700;font-size:.88rem;margin-bottom:2px;overflow-wrap:break-word;word-break:break-word;white-space:normal;}
+.live-meta{font-size:.7rem;color:rgba(26,26,46,.42);overflow-wrap:break-word;word-break:break-word;}
 .live-stats{display:flex;gap:10px;align-items:center;}
 .live-stat{text-align:center;}
 .live-stat-val{font-size:1.1rem;font-weight:800;}
@@ -175,18 +186,24 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 .sp-status{font-size:.66rem;color:rgba(26,26,46,.45);}
 
 /* ── RESULTS ── */
-.res-session{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;}
+.res-session{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;max-width:100%;}
 .res-session.session-journaled{border-color:rgba(22,163,74,.4);background:rgba(22,163,74,.03);}
 .res-session.session-journaled .res-session-hdr::after{content:'✓ У журналі';font-size:.62rem;font-weight:700;color:var(--green);background:rgba(22,163,74,.12);padding:2px 7px;border-radius:4px;margin-left:4px;}
-.res-session-hdr{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;transition:var(--tr);}
+.res-session-hdr{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:13px 16px;cursor:pointer;transition:var(--tr);min-width:0;max-width:100%;}
 .res-session-hdr:hover{background:var(--paper);}
-.res-icon{width:56px;height:56px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.18);text-align:center;}
-.res-info{flex:1;min-width:0;}
-.res-title{font-weight:700;font-size:.88rem;margin-bottom:2px;}
-.res-meta{font-size:.68rem;color:rgba(26,26,46,.42);}
-.res-badge{font-size:1.1rem;font-weight:800;padding:5px 13px;border-radius:8px;color:#fff;flex-shrink:0;}
-.res-detail{display:none;border-top:1px solid var(--border);}
+.res-icon{width:46px;height:46px;min-width:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.18);text-align:center;}
+.res-info{flex:1;min-width:0;overflow:hidden;}
+.res-title{font-weight:700;font-size:.88rem;margin-bottom:2px;overflow-wrap:break-word;word-break:break-word;white-space:normal;max-width:100%;}
+.res-meta{font-size:.68rem;color:rgba(26,26,46,.42);max-width:100%;}
+.res-badge{font-size:1.1rem;font-weight:800;padding:5px 10px;border-radius:8px;color:#fff;flex-shrink:0;}
+.res-hdr-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;width:100%;padding-top:4px;}
+@media(min-width:640px){.res-hdr-actions{width:auto;padding-top:0;margin-left:auto;}}
+.res-detail{display:none;border-top:1px solid var(--border);overflow:hidden;}
 .res-detail.open{display:block;}
+/* Мобільний список результатів */
+.res-mob-list{display:none;padding:0 14px;max-width:100%;box-sizing:border-box;overflow:hidden;}
+.res-desk-table{display:table;}
+@media(max-width:899px){.res-mob-list{display:block;}.res-desk-table{display:none;}}
 .rtbl{width:100%;border-collapse:collapse;font-size:.79rem;}
 .rtbl th{text-align:left;padding:7px 13px;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(26,26,46,.38);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
 .rtbl th:hover{color:var(--primary);}
@@ -267,19 +284,65 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
   .sidebar.open{transform:translateX(0);}
   .main,.main.wide{margin-left:0;}
   .hamburger{display:flex;}
-  .topbar,.page{padding:11px 13px;}
+  .topbar,.page{padding:11px 13px;overflow-x:hidden;}
   .grid2,.grid3,.grid4{grid-template-columns:1fr;}
   .sb-collapse-btn{display:none;}
   .lib-actions{gap:3px;}
   .lib-actions .btn{padding:4px 8px;}
   .progress-grid{grid-template-columns:1fr 1fr;}
+  .session-live-header{flex-wrap:wrap;gap:8px;}
+  .live-stats{min-width:0;gap:8px;}
+  .lib-grid{grid-template-columns:1fr!important;}
+  .lib-card-actions{flex-wrap:wrap;gap:4px;}
+  /* Settings — одна колонка на планшеті */
+  .settings-top-grid{grid-template-columns:1fr!important;}
+  .fb-info-grid{grid-template-columns:1fr!important;}
+  .shield-grid{grid-template-columns:1fr!important;}
 }
 @media(max-width:480px){
   .grade-row{grid-template-columns:40px 1fr 56px 28px;}
-  .rtbl th:nth-child(3),.rtbl td:nth-child(3){display:none;}
   .stats-grid{grid-template-columns:1fr 1fr;}
+
+  /* ── Картки учнів у live-detail ── */
+  .progress-grid{grid-template-columns:1fr!important;}
+  .student-progress{
+    display:grid;
+    grid-template-columns:1fr auto;
+    grid-template-rows:auto auto;
+    gap:3px 6px;
+  }
+  .sp-name{grid-column:1;grid-row:1;font-size:.82rem;}
+  .sp-status{grid-column:2;grid-row:1;font-size:.72rem;text-align:right;}
+  .sp-bar-wrap{grid-column:1/-1;grid-row:2;}
+
+  /* ── Активна сесія ── */
+  .session-live-header{flex-direction:column;align-items:stretch;gap:8px;}
+  .live-stats{justify-content:flex-start;flex-wrap:wrap;}
+
+  /* ── Бібліотека ── */
+  .lib-grid{grid-template-columns:1fr!important;}
+  .lib-card{padding:12px;}
+  .lib-card-actions{flex-wrap:wrap;gap:5px;}
+  .lib-card-actions .btn{flex:1;min-width:calc(50% - 3px);font-size:.72rem;padding:5px 8px;text-align:center;}
+
+  /* ── Settings ── */
+  .settings-top-grid{grid-template-columns:1fr!important;}
+  .fb-info-grid{grid-template-columns:1fr!important;}
+  .shield-grid{grid-template-columns:1fr!important;}
+  #fbRulesBox{font-size:.6rem;min-height:160px;max-width:100%;box-sizing:border-box;}
+
+  /* ── Топбар ── */
+  .topbar-right{gap:6px;}
 }
 </style>
+<script>
+// Застосовуємо тему синхронно до першого рендеру — без flash
+(function(){try{
+  const t=JSON.parse(localStorage.getItem('sqpro_theme')||'null');
+  if(t&&t.color)document.documentElement.style.setProperty('--primary',t.color);
+  if(t&&t.accent)document.documentElement.style.setProperty('--accent',t.accent);
+}catch(e){}})();
+</script>
 </head>
 <body>
 
@@ -575,7 +638,9 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
           </div>
           <!-- Finish conditions -->
           <div class="card-title" style="margin-top:10px;">⚙️ Умови завершення</div>
-          <div class="tog-row"><label class="tog"><input type="checkbox" id="finishOnTime" checked><span class="tog-tr"></span></label><div><div class="tl">Завершити автоматично</div><div class="td2">Зупинити для всіх через (тривалість + 5 хв) від запуску</div></div></div>
+          <div class="tog-row"><label class="tog"><input type="checkbox" id="finishOnTime" checked><span class="tog-tr"></span></label><div><div class="tl">Завершити автоматично по часу</div><div class="td2">Зупинити для всіх через (тривалість + 5 хв) від запуску</div></div></div>
+          <div class="tog-row"><label class="tog"><input type="checkbox" id="finishOnAll"><span class="tog-tr"></span></label><div><div class="tl">Завершити коли всі здали</div><div class="td2">Сесія закриється автоматично як тільки останній учень натисне "Здати"</div></div></div>
+          <div class="tog-row"><label class="tog"><input type="checkbox" id="allowRetry"><span class="tog-tr"></span></label><div><div class="tl">Дозволити повторне проходження</div><div class="td2">Вчитель може надіслати учню нове посилання з тим самим тестом</div></div></div>
           <div class="tog-row"><label class="tog"><input type="checkbox" id="s-mood" checked><span class="tog-tr"></span></label><div><div class="tl">🎭 Показати екран настрою</div><div class="td2">Учні обирають настрій перед стартом тесту</div></div></div>
           <div class="divider"></div>
           <div id="crSec" style="margin-bottom:12px;"></div>
@@ -723,7 +788,7 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
         <div class="tog-row"><label class="tog"><input type="checkbox" id="s-shuffle" checked><span class="tog-tr"></span></label><div><div class="tl">Перемішати питання і варіанти</div><div class="td2">Кожен учень бачить різний порядок</div></div></div>
         <div class="tog-row"><label class="tog"><input type="checkbox" id="s-fullscreen" checked><span class="tog-tr"></span></label><div><div class="tl">📱 Повноекранний режим</div><div class="td2">Примусовий fullscreen на мобільних. Вихід = порушення</div></div></div>
         <div class="tog-row"><label class="tog"><input type="checkbox" id="s-raf" checked><span class="tog-tr"></span></label><div><div class="tl">📱 RAF-детектор шторки</div><div class="td2">Виявляє зупинку браузера — шторка сповіщень, інший додаток</div></div></div>
-        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-coloros" checked><span class="tog-tr"></span></label><div><div class="tl">📱 Захист ColorOS / MIUI</div><div class="td2">ResizeObserver + DPR + touchstart — ловить float-вікна та шторку на Oppo/Realme/Xiaomi</div></div></div>
+        <div class="tog-row"><label class="tog"><input type="checkbox" id="s-coloros" checked><span class="tog-tr"></span></label><div><div class="tl">📱 Захист ColorOS / MIUI / Opera</div><div class="td2">ResizeObserver + outerWidth + DPR + touchstart — ловить float-вікна та розділений екран на Oppo/Realme/Xiaomi/Opera Mobile</div></div></div>
         <div class="tog-row"><label class="tog"><input type="checkbox" id="s-zwc" checked><span class="tog-tr"></span></label><div><div class="tl">🤖 Захист від ШІ-зчитування</div><div class="td2">Невидимі символи між літерами — TTS, голосові асистенти та ШІ-агенти читають кашу</div></div></div>
         <div class="divider"></div>
         <div class="fg"><label class="fl">Макс. порушень до завершення</label><input type="number" id="s-maxviol" value="3" min="1" max="20"></div>
@@ -750,142 +815,91 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 
   <!-- SETTINGS -->
   <div class="page" id="page-settings">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
 
-      <!-- КОЛОНКА 1: Акаунт + Тема -->
-      <div style="display:flex;flex-direction:column;gap:16px;">
+    <!-- Ряд 1: Акаунт + Тема -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-bottom:16px;" class="settings-top-grid">
 
-        <!-- Акаунт -->
-        <div class="card">
-          <div class="card-title">🔑 Акаунт вчителя</div>
-          <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.14);border-radius:9px;padding:10px 13px;font-size:.75rem;color:rgba(37,99,235,.85);margin-bottom:14px;line-height:1.6;">
-            🔐 Авторизація через Firebase Authentication. Пароль зберігається на серверах Google.
-          </div>
-          <div style="padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:14px;">
-            <div style="font-size:.65rem;font-weight:700;color:rgba(26,26,46,.38);text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px;">Поточний акаунт</div>
-            <div id="currentEmailDisplay" style="font-size:.9rem;font-weight:700;color:var(--blue);">—</div>
-          </div>
-          <div class="fg"><label class="fl">Новий пароль (мін. 6 символів)</label><input type="password" id="sNewPass" placeholder="••••••••"></div>
-          <div class="fg"><label class="fl">Підтвердити пароль</label><input type="password" id="sNewPass2" placeholder="••••••••"></div>
-          <div id="sMsg" style="font-size:.79rem;min-height:18px;margin-bottom:10px;"></div>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-primary" style="flex:1;" onclick="saveAuthSettings()">💾 Змінити пароль</button>
-            <button class="btn btn-outline" style="flex:1;" onclick="sendResetEmail()">📧 Скинути email</button>
-          </div>
+      <!-- Акаунт -->
+      <div class="card">
+        <div class="card-title">🔑 Акаунт вчителя</div>
+        <div style="background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.14);border-radius:9px;padding:9px 12px;font-size:.74rem;color:rgba(37,99,235,.85);margin-bottom:13px;line-height:1.6;">
+          🔐 Авторизація через Firebase Authentication. Пароль зберігається на серверах Google.
         </div>
-
-        <!-- Тема -->
-        <div class="card">
-          <div class="card-title">🎨 Тема оформлення</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-            <div class="fg" style="margin:0;">
-              <label class="fl">Колір навігації</label>
-              <input type="color" id="themeColor" value="#1a1a2e" oninput="applyTheme()">
-            </div>
-            <div class="fg" style="margin:0;">
-              <label class="fl">Акцентний колір</label>
-              <input type="color" id="themeAccent" value="#c84b31" oninput="applyTheme()">
-            </div>
-          </div>
-          <div class="fg"><label class="fl">Логотип (emoji або URL картинки)</label>
-            <input type="text" id="themeLogo" placeholder="🧪 або https://…/logo.png" oninput="applyTheme()">
-          </div>
-          <div class="fg"><label class="fl">Назва системи</label>
-            <input type="text" id="themeName" placeholder="SecureQuiz" oninput="applyTheme()">
-          </div>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-primary" style="flex:1;" onclick="saveTheme()">💾 Зберегти тему</button>
-            <button class="btn btn-outline" style="flex:1;" onclick="resetTheme()">↺ Скинути</button>
-          </div>
+        <div style="padding:7px 0 11px;border-bottom:1px solid var(--border);margin-bottom:12px;">
+          <div style="font-size:.64rem;font-weight:700;color:rgba(26,26,46,.38);text-transform:uppercase;letter-spacing:.09em;margin-bottom:3px;">Поточний акаунт</div>
+          <div id="currentEmailDisplay" style="font-size:.88rem;font-weight:700;color:var(--blue);">—</div>
         </div>
-
+        <div class="fg"><label class="fl">Новий пароль (мін. 6 символів)</label><input type="password" id="sNewPass" placeholder="••••••••"></div>
+        <div class="fg"><label class="fl">Підтвердити пароль</label><input type="password" id="sNewPass2" placeholder="••••••••"></div>
+        <div id="sMsg" style="font-size:.79rem;min-height:18px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveAuthSettings()">💾 Змінити пароль</button>
+          <button class="btn btn-outline" style="flex:1;" onclick="sendResetEmail()">📧 Скинути email</button>
+        </div>
       </div>
 
-      <!-- КОЛОНКА 2: Firebase Rules + Інструкція -->
-      <div style="display:flex;flex-direction:column;gap:16px;">
-
-        <!-- Firebase Rules -->
-        <div class="card">
-          <div class="card-title">🔥 Firebase Rules</div>
-          <div id="fbStatus" style="font-size:.78rem;margin-bottom:10px;min-height:18px;"></div>
-
-          <!-- Інструкція -->
-          <div style="display:flex;gap:6px;align-items:flex-start;background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);border-radius:9px;padding:10px 12px;font-size:.74rem;line-height:1.65;margin-bottom:12px;">
-            <span style="font-size:1rem;flex-shrink:0;margin-top:1px;">ℹ️</span>
-            <span>
-              <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);font-weight:700;">Firebase Console</a>
-              → ваш проєкт → Realtime Database → <strong>Rules</strong> → замініть вміст → <strong>Publish</strong>
-            </span>
-          </div>
-
-          <!-- Що захищено -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
-            <div style="background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.18);border-radius:8px;padding:8px 10px;font-size:.71rem;line-height:1.6;">
-              <div style="font-weight:700;color:#16a34a;margin-bottom:3px;">✅ Захищено</div>
-              <div style="color:rgba(26,26,46,.6);">• Учні не бачать чужих відповідей<br>• Результат тільки з реального тесту<br>• Бібліотека і конфіг — тільки вчитель<br>• Тема доступна без авторизації</div>
-            </div>
-            <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:8px 10px;font-size:.71rem;line-height:1.6;">
-              <div style="font-weight:700;color:#d97706;margin-bottom:3px;">📋 Логіка доступу</div>
-              <div style="color:rgba(26,26,46,.6);">• sessions — читає будь-хто за SID<br>• participants — пише учень, читає вчитель<br>• results — пише учень одноразово<br>• sessionId перевіряється в базі</div>
-            </div>
-          </div>
-
-          <!-- Rules box -->
-          <div id="fbRulesBox" style="background:var(--paper2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-family:monospace;font-size:.66rem;line-height:1.75;white-space:pre;overflow-x:auto;margin-bottom:10px;user-select:text;cursor:text;">{
-  "rules": {
-    "sessions": {
-      "$sid": {
-        ".read": true,
-        ".write": "auth != null",
-        ".validate": "newData.hasChildren(['sessionId','title','status'])",
-        "participants": {
-          "$pid": {
-            ".read": "auth != null",
-            ".write": true,
-            ".validate": "newData.hasChildren(['name']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length &lt; 100"
-          }
-        }
-      }
-    },
-    "results": {
-      ".read": "auth != null",
-      ".write": "auth != null",
-      "$rid": {
-        ".write": "auth != null || (!data.exists() && newData.hasChildren(['sessionId','student','pct','ts']) && newData.child('pct').isNumber() && newData.child('pct').val() >= 0 && newData.child('pct').val() &lt;= 100 && (now - newData.child('ts').val()) &lt; 300000 && root.child('sessions').child(newData.child('sessionId').val()).exists())",
-        ".validate": "!newData.exists() || (newData.child('student').isString() && newData.child('student').val().length > 0 && newData.child('student').val().length &lt; 100)"
-      }
-    },
-    "library": { ".read": "auth != null", ".write": "auth != null" },
-    "config": {
-      ".read": "auth != null",
-      ".write": "auth != null",
-      "theme": { ".read": true }
-    }
-  }
-}</div>
-          <button class="btn btn-outline btn-sm" style="width:100%;" onclick="copyFirebaseRules()">📋 Скопіювати Rules у буфер обміну</button>
+      <!-- Тема -->
+      <div class="card">
+        <div class="card-title">🎨 Тема оформлення</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div class="fg" style="margin:0;"><label class="fl">Колір навігації</label><input type="color" id="themeColor" value="#1a1a2e" oninput="applyTheme()"></div>
+          <div class="fg" style="margin:0;"><label class="fl">Акцентний колір</label><input type="color" id="themeAccent" value="#c84b31" oninput="applyTheme()"></div>
         </div>
-
-        <!-- Довідка про безпеку -->
-        <div class="card">
-          <div class="card-title">📱 Захист на смартфонах</div>
-          <div style="font-size:.78rem;line-height:1.85;color:rgba(26,26,46,.7);">
-            <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:baseline;">
-              <span style="font-weight:700;color:var(--primary);">Водяний знак</span><span>Ім'я учня поверх тесту — видно на будь-якому фото екрана.</span>
-              <span style="font-weight:700;color:var(--primary);">Fullscreen</span><span>Примусовий повноекранний режим. Вихід = порушення. Chrome Android; Safari iOS — обмежено.</span>
-              <span style="font-weight:700;color:var(--primary);">RAF-детектор</span><span>Виявляє шторку сповіщень і перехід в інший додаток через паузу анімації.</span>
-              <span style="font-weight:700;color:var(--primary);">ColorOS / MIUI</span><span>ResizeObserver + DPR + touchstart — ловить float-вікна Oppo, Realme, Xiaomi.</span>
-              <span style="font-weight:700;color:var(--primary);">Захист ШІ</span><span>ZW-символи між літерами — TTS, Google Assistant і ШІ-агенти отримують кашу.</span>
-              <span style="font-weight:700;color:var(--primary);">Інкогніто</span><span>StorageManager API визначає приватний режим Chrome / Firefox.</span>
-            </div>
-            <div style="margin-top:10px;padding:8px 10px;background:rgba(239,68,68,.06);border-radius:7px;font-size:.7rem;color:rgba(26,26,46,.45);">
-              ⚠️ Жоден браузер не може повністю заблокувати системний знімок екрана — це обмеження ОС.
-            </div>
-          </div>
+        <div class="fg"><label class="fl">Логотип (emoji або URL картинки)</label><input type="text" id="themeLogo" placeholder="🧪 або https://…/logo.png" oninput="applyTheme()"></div>
+        <div class="fg"><label class="fl">Назва системи</label><input type="text" id="themeName" placeholder="SecureQuiz" oninput="applyTheme()"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="saveTheme()">💾 Зберегти тему</button>
+          <button class="btn btn-outline" style="flex:1;" onclick="resetTheme()">↺ Скинути</button>
         </div>
-
       </div>
     </div>
+
+    <!-- Ряд 2: Firebase Rules — повна ширина, Rules як textarea без горизонтального скролу -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div class="card-title" style="margin:0;">🔥 Firebase Rules</div>
+        <div id="fbStatus" style="font-size:.76rem;"></div>
+      </div>
+
+      <!-- Інструкція + захист в одному рядку -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;" class="fb-info-grid">
+        <div style="display:flex;gap:6px;align-items:flex-start;background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);border-radius:9px;padding:9px 11px;font-size:.73rem;line-height:1.6;">
+          <span style="flex-shrink:0;">ℹ️</span>
+          <span><a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue);font-weight:700;">Firebase Console</a> → ваш проєкт → Realtime Database → <strong>Rules</strong> → замініть → <strong>Publish</strong></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
+          <div style="background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.18);border-radius:8px;padding:7px 9px;font-size:.69rem;line-height:1.55;">
+            <div style="font-weight:700;color:#16a34a;margin-bottom:2px;">✅ Захищено</div>
+            <div style="color:rgba(26,26,46,.6);">Учні не читають чужі дані<br>Результат тільки з реального тесту<br>Бібліотека — тільки вчитель</div>
+          </div>
+          <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:7px 9px;font-size:.69rem;line-height:1.55;">
+            <div style="font-weight:700;color:#d97706;margin-bottom:2px;">📋 Доступ</div>
+            <div style="color:rgba(26,26,46,.6);">sessions — за SID<br>participants — пише учень<br>results — одноразово</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rules box — вміст вставляється через initRulesBox() щоб уникнути дублювання з copyFirebaseRules() -->
+      <textarea id="fbRulesBox" readonly onclick="this.select()" style="width:100%;max-width:100%;min-height:200px;background:var(--paper2);border:1px solid var(--border);border-radius:9px;padding:11px 13px;font-family:monospace;font-size:.64rem;line-height:1.7;resize:vertical;white-space:pre;overflow-wrap:normal;overflow-x:auto;overflow-y:auto;margin-bottom:10px;cursor:text;outline:none;color:var(--ink);box-sizing:border-box;display:block;"></textarea>
+      <button class="btn btn-outline btn-sm" style="width:100%;" onclick="copyFirebaseRules()">📋 Скопіювати Rules у буфер обміну</button>
+    </div>
+
+    <!-- Ряд 3: Довідка про захист -->
+    <div class="card">
+      <div class="card-title">📱 Захист на смартфонах</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:.77rem;line-height:1.7;color:rgba(26,26,46,.7);" class="shield-grid">
+        <div><strong style="color:var(--primary);">Водяний знак</strong> — ім'я учня поверх тесту, видно на фото.</div>
+        <div><strong style="color:var(--primary);">Fullscreen + Portrait lock</strong> — повний екран + блокує поворот. Вихід = порушення.</div>
+        <div><strong style="color:var(--primary);">RAF-детектор</strong> — виявляє шторку сповіщень та інші додатки.</div>
+        <div><strong style="color:var(--primary);">ColorOS / MIUI</strong> — ResizeObserver + DPR + touchstart.</div>
+        <div><strong style="color:var(--primary);">Захист ШІ</strong> — ZW-символи, TTS і голосові асистенти читають кашу.</div>
+        <div><strong style="color:var(--primary);">Інкогніто</strong> — StorageManager quota визначає приватний режим.</div>
+      </div>
+      <div style="margin-top:10px;padding:7px 10px;background:rgba(239,68,68,.06);border-radius:7px;font-size:.69rem;color:rgba(26,26,46,.45);">
+        ⚠️ Жоден браузер не може повністю заблокувати системний знімок екрана — це обмеження ОС. Xiaomi Mi Browser підтримується.
+      </div>
+    </div>
+
   </div>
 
 </div><!-- /main -->
@@ -893,6 +907,12 @@ input[type=color]{width:44px;height:36px;padding:2px 4px;cursor:pointer;border-r
 
 <script>
 'use strict';
+// ══ CONSTANTS ══
+const SESSION_STALE_HOURS=24; // авто-expire сесій старших N годин
+const LIB_MAX_LOCAL=500;      // максимум результатів у localStorage
+const SESSION_COMPLETION_MIN_STUDENTS=2; // мін. учасників для авто-завершення
+const SESSION_COMPLETION_MIN_WAIT_MS=30000; // мін. час від старту до авто-завершення
+
 // ══ FIREBASE + AUTH ══
 let db=null, auth=null, currentUser=null;
 
@@ -1009,8 +1029,6 @@ function sendResetEmail(){
     .catch(e=>toast('Помилка: '+e.message));
 }
 
-function syncAuthFromFirebase(){/* замінено Firebase Auth */}
-
 // ══ THEME ══
 function applyTheme(){
   const c=v('themeColor')||'#1a1a2e';
@@ -1072,11 +1090,7 @@ function closeMob(){el('sidebar').classList.remove('open');el('mobOverlay').clas
 const PT={dash:'Огляд',creator:'Конструктор тесту',library:'Бібліотека тестів',active:'Активні тести',results:'Результати',archive:'Архів — журнал',grades:'Система оцінювання',myclasses:'Мої класи',security:'Захист',settings:'Налаштування'};
 function navTo(p){
   closeMob();
-  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
-  el('page-'+p).classList.add('active');
-  document.querySelector('[data-page="'+p+'"]').classList.add('active');
-  el('topbarTitle').textContent=PT[p]||'';
+  // Рендеримо контент ДО показу
   if(p==='dash')renderDash();
   if(p==='grades')renderGrades();
   if(p==='results'){renderResultsPage();updateResFilter();}
@@ -1085,7 +1099,20 @@ function navTo(p){
   if(p==='library'){updateLibFilters();renderLib();}
   if(p==='creator'){renderCreatorPanel();updateCreatorDataLists();updateAISubjectDropdown();updateAIPrompt();}
   if(p==='active')renderActiveSessions();
-  if(p==='security'){renderCreatorPanel();setTimeout(runSecAudit,400);}
+  if(p==='security'){renderCreatorPanel();}
+  if(p==='settings'){initRulesBox();}
+
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active','anim'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+
+  const pg=el('page-'+p);
+  pg.classList.add('active');
+  // Анімація через rAF — тільки після того як браузер відмалював контент
+  requestAnimationFrame(()=>requestAnimationFrame(()=>pg.classList.add('anim')));
+
+  document.querySelector('[data-page="'+p+'"]').classList.add('active');
+  el('topbarTitle').textContent=PT[p]||'';
+  if(p==='security')setTimeout(runSecAudit,400);
 }
 
 // ══ IMPORT TABS ══
@@ -1273,6 +1300,7 @@ function updateAIPrompt(){
   if(ttf)ttf.value=autoMin;
 }
 
+// Синхронізує вибраний предмет зі полем "Предмет" конструктора та оновлює промт
 function applyAISubject(){
   const subj=v('aiSubject');
   if(!subj)return;
@@ -1295,6 +1323,7 @@ function updateAISubjectDropdown(){
     all.map(p=>`<option value="${p}">${p}</option>`).join('');
 }
 
+// Синхронізує вибрану паралель зі полем "Клас" конструктора та оновлює промт
 function applyAIParallel(){
   const parallel=v('aiParallel');
   // Паралель → в поле "Клас" конструктора
@@ -1306,7 +1335,8 @@ function applyAIParallel(){
 
 function copyAIPrompt(){
   updateAIPrompt();
-  const prompt=_buildAIPrompt();
+  const box=el('aiPromptBox');
+  const prompt=box?box.textContent:_buildAIPrompt();
   navigator.clipboard.writeText(prompt)
     .then(()=>toast('📋 Промт скопійовано!'))
     .catch(()=>toast('Скопіюйте вручну'));
@@ -1586,7 +1616,7 @@ function setLib(arr){
   if(db){
     // Стабільні ключі на основі id — без дублювання при повторних збереженнях
     const obj={};
-    arr.forEach(t=>{obj['t_'+(t.id||Date.now())]=t;});
+    arr.forEach((t,idx)=>{const key='t_'+(t.id!=null?t.id:Date.now()+'_'+idx);obj[key]=t;});
     db.ref('library').set(obj).catch(()=>{});
   }
 }
@@ -1747,6 +1777,14 @@ async function encryptForSession(obj,keyRaw){
   return{iv:btoa(String.fromCharCode(...iv)),d:btoa(String.fromCharCode(...new Uint8Array(cipher)))};
 }
 
+async function decryptForSession(enc,keyRaw){
+  const key=await _aesKey(keyRaw);
+  const iv=Uint8Array.from(atob(enc.iv),c=>c.charCodeAt(0));
+  const d=Uint8Array.from(atob(enc.d),c=>c.charCodeAt(0));
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,d);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
 async function _doLaunch(launchClass){
   const sessionId='sess_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
   const timerMode=v('timerMode')||'total';
@@ -1779,7 +1817,8 @@ async function _doLaunch(launchClass){
     // questions НЕ зберігаємо відкрито
     secSettings:{tab:getSec('s-tab'),blur:getSec('s-blur'),ctx:getSec('s-ctx'),copy:getSec('s-copy'),prtsc:getSec('s-prtsc'),wm:getSec('s-wm'),shuffle:getSec('s-shuffle'),fullscreen:getSec('s-fullscreen'),raf:getSec('s-raf'),mood:getSec('s-mood'),coloros:getSec('s-coloros'),zwc:getSec('s-zwc'),maxviol:getSecVal('s-maxviol')},
     grades:getGrades().map(g=>({...g})),
-    finishOnAll:false,
+    finishOnAll:getSec('finishOnAll'),
+    allowRetry:getSec('allowRetry'),
     finishOnTime:autoStop,
     stopAt:stopAt?stopAt.toISOString():null,
     startedAt:startedAt.toISOString(),
@@ -1788,11 +1827,19 @@ async function _doLaunch(launchClass){
 
   // Save to Firebase
   if(db){
-    db.ref('sessions/'+sessionId).set(payload);
+    try{
+      await db.ref('sessions/'+sessionId).set(payload);
+    }catch(e){
+      toast('❌ Помилка збереження сесії: '+e.message);
+      el('launchStep1').style.display='block';
+      el('launchStep2').style.display='none';
+      return;
+    }
     activeSessionId=sessionId;
     el('stopSessionBtn').style.display='block';
     startListeningActiveSessions();
     if(payload.finishOnAll){listenForCompletion(sessionId,payload);}
+    startSessionPauseListener(sessionId);
   } else {
     // Fallback localStorage — з незашифрованими питаннями для локального тесту
     const localPayload={...payload,questions:JSON.parse(JSON.stringify(questions))};
@@ -1825,9 +1872,19 @@ async function _doLaunch(launchClass){
     if(stopTimeEl)stopTimeEl.textContent=hh+':'+mm;
     const msUntilStop=stopTime.getTime()-Date.now();
     if(msUntilStop>0&&db){
+      // ⚠️ ОБМЕЖЕННЯ: setTimeout спрацює тільки поки ця вкладка відкрита.
+      // Якщо вчитель закриє браузер — авто-зупинка не відбудеться.
+      // Надійне рішення: Firebase Cloud Function з тригером по stopAt.
       setTimeout(()=>{
-        db.ref('sessions/'+sessionId+'/status').set('stopped');
-        toast('⏰ Час вийшов — тест автоматично зупинено');
+        if(!db)return;
+        db.ref('sessions/'+sessionId+'/status').once('value').then(snap=>{
+          // Зупиняємо тільки якщо ще active або paused (не зупинено вручну)
+          const st=snap.val();
+          if(st==='active'||st==='paused'){
+            db.ref('sessions/'+sessionId+'/status').set('stopped');
+            toast('⏰ Час вийшов — тест автоматично зупинено');
+          }
+        }).catch(()=>{});
       },msUntilStop);
     }
   } else {
@@ -1855,11 +1912,12 @@ function stopActiveSession(){
 function listenForCompletion(sessionId,payload){
   if(!db)return;
   const ref=db.ref('sessions/'+sessionId+'/participants');
+  const _startedAt=Date.now();
   ref.on('value',snap=>{
     const parts=snap.val()||{};
     const done=Object.values(parts).filter(p=>p.status==='done').length;
     const total=Object.keys(parts).length;
-    if(total>0&&done>=total){
+    if(total>=SESSION_COMPLETION_MIN_STUDENTS&&done>=total&&Date.now()-_startedAt>SESSION_COMPLETION_MIN_WAIT_MS){
       db.ref('sessions/'+sessionId+'/status').set('stopped');
       ref.off();
       toast('✅ Всі учні завершили тест');
@@ -1875,7 +1933,7 @@ function startListeningActiveSessions(){
   db.ref('sessions').on('value',snap=>{
     const all=snap.val()||{};
     _lastActiveSnap=all;
-    const cutoff=Date.now()-24*60*60*1000;
+    const cutoff=Date.now()-SESSION_STALE_HOURS*60*60*1000;
     // Автозакриття сесій >24год
     if(currentUser){
       Object.entries(all).forEach(([sid,s])=>{
@@ -1884,7 +1942,7 @@ function startListeningActiveSessions(){
         }
       });
     }
-    const count=Object.values(all).filter(s=>s.status==='active').length;
+    const count=Object.values(all).filter(s=>s.status==='active'||s.status==='paused').length;
     const badge=el('activeBadge');
     if(badge){badge.textContent=count;badge.style.display=count>0?'inline':'none';}
     const dActive=el('dActive');if(dActive)dActive.textContent=count;
@@ -1901,28 +1959,27 @@ function renderActiveSessions(){
 
 function renderActiveSessionsFromSnap(sessions){
   const container=el('activeList');if(!container)return;
-  // Preserve open state of detail panels
+  // Зберігаємо відкриті панелі — після перерендеру відновлюємо їх стан
   const openSids=new Set();
-  container.querySelectorAll('.live-detail.open').forEach(d=>openSids.add(d.id));
-  // Show: active + stopped + completed (all visible, can delete stopped/completed)
-  // Show: active always; stopped/completed only if manually clicked to keep visible
+  container.querySelectorAll('.live-detail.open').forEach(d=>openSids.add(d.id.replace('ld-','')));
   const all=Object.entries(sessions)
-    .filter(([,s])=>s.status==='active')
+    .filter(([,s])=>s.status==='active'||s.status==='paused')
     .sort((a,b)=>(b[1].startedAt||'').localeCompare(a[1].startedAt||''));
   if(!all.length){container.innerHTML='<div class="empty-state"><div class="esi">🟢</div><p>Активних тестів немає.<br>Завершені автоматично перейшли в Результати.</p></div>';return;}
   container.innerHTML=all.map(([sid,s])=>{
-    const parts=s.participants||{};
-    const total=Object.keys(parts).length;
-    const done=Object.values(parts).filter(p=>p.status==='done').length;
-    const inProgress=total-done;
-    const avgPct=done>0?Math.round(Object.values(parts).filter(p=>p.pct!==undefined).reduce((a,p)=>a+p.pct,0)/done):0;
-    const grade=gradeByPct(avgPct);
-    const isActive=s.status==='active';
-    const isStopped=false;
-    const statusDot='<div class="live-dot"></div>';
-    const statusLabel='🟢 Активний';
+      const parts=s.participants||{};
+      const total=Object.keys(parts).length;
+      const done=Object.values(parts).filter(p=>p.status==='done').length;
+      const inProgress=total-done;
+      const avgPct=done>0?Math.round(Object.values(parts).filter(p=>p.pct!==undefined).reduce((a,p)=>a+p.pct,0)/done):0;
+      const grade=gradeByPct(avgPct);
+      const isActive=s.status==='active';
+      const isPaused=s.status==='paused';
+      const statusDot=isPaused?'<div class="live-dot" style="background:#d97706;animation:none;"></div>':'<div class="live-dot"></div>';
+      const statusLabel=isPaused?'⏸ Призупинено':'🟢 Активний';
     return`<div class="session-live">
-      <div class="session-live-header" onclick="toggleActiveDetail('${sid}')">
+      <div class="session-live-header">
+        <div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0;cursor:pointer;" onclick="toggleActiveDetail('${sid}')">
         ${statusDot}
         <div class="live-info">
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px;">
@@ -1931,15 +1988,24 @@ function renderActiveSessionsFromSnap(sessions){
             <span style="background:rgba(22,163,74,.12);color:#16a34a;border:1px solid rgba(22,163,74,.22);border-radius:20px;padding:1px 9px;font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums;" id="et-${sid}">⏱ ${_fmtElapsed(s.startedAt)}</span>
           </div>
           <div class="live-meta">${s.subject||''} · ${s.startedAt?new Date(s.startedAt).toLocaleString('uk-UA',{hour:'2-digit',minute:'2-digit'}):''} · ${statusLabel}</div>
+          ${total>0?`<div style="margin-top:7px;display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;height:6px;background:rgba(26,26,46,.1);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${Math.round(done/total*100)}%;background:var(--green);border-radius:3px;transition:width .4s;"></div>
+            </div>
+            <span style="font-size:.68rem;font-weight:700;color:rgba(26,26,46,.45);white-space:nowrap;font-variant-numeric:tabular-nums;">${done} / ${total} здали</span>
+          </div>`:''}
         </div>
-        <div class="live-stats">
+        </div>
+        <div class="live-stats" style="cursor:pointer;" onclick="toggleActiveDetail('${sid}')">
           <div class="live-stat"><div class="live-stat-val" style="color:var(--green)">${done}</div><div class="live-stat-lbl">Здали</div></div>
           <div class="live-stat"><div class="live-stat-val" style="color:var(--blue)">${inProgress}</div><div class="live-stat-lbl">В процесі</div></div>
           <div class="live-stat"><div class="live-stat-val">${total}</div><div class="live-stat-lbl">Всього</div></div>
         </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;">
+        <div style="display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
           <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();copySessionLink('${sid}')" title="Скопіювати посилання">🔗</button>
-          ${isActive?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();stopSession('${sid}')">⏹ Стоп</button>`:''}
+          <button class="btn btn-outline btn-sm" id="pauseBtn-${sid.replace(/\W/g,'_')}" onclick="event.stopPropagation();pauseSession('${sid}')" title="Призупинити тест для всіх" style="${isPaused?'display:none;':''}color:#d97706;border-color:rgba(217,119,6,.3);">⏸ Пауза</button>
+          <button class="btn btn-outline btn-sm" id="resumeBtn-${sid.replace(/\W/g,'_')}" onclick="event.stopPropagation();resumeSession('${sid}')" title="Відновити тест" style="${isPaused?'':'display:none;'}color:var(--green);border-color:rgba(22,163,74,.3);">▶ Продовжити</button>
+          ${(isActive||isPaused)?`<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();stopSession('${sid}')">⏹ Стоп</button>`:''}
           <button class="btn btn-outline btn-sm" style="color:var(--accent);" onclick="event.stopPropagation();deleteSession('${sid}')" title="Видалити з активних">🗑</button>
         </div>
       </div>
@@ -1949,16 +2015,27 @@ function renderActiveSessionsFromSnap(sessions){
           ${Object.entries(parts).map(([uid,p])=>{
             const pct=p.current&&p.total?Math.round(p.current/p.total*100):0;
             const isDone=p.status==='done';
+            const canRetry=!!(s.allowRetry||s.payload?.allowRetry);
             return`<div class="student-progress">
               <div class="sp-name">${p.name||'Учень'}</div>
               <div class="sp-bar-wrap"><div class="sp-bar" style="width:${isDone?100:pct}%;background:${isDone?'var(--green)':'var(--blue)'}"></div></div>
-              <div class="sp-status">${isDone?'✅ Завершив ('+p.pct+'%)':(p.current?`Q${p.current}/${p.total}`:'Очікує')}</div>
+              <div class="sp-status" style="display:flex;align-items:center;gap:5px;">
+                <span>${isDone?'✅ Завершив ('+p.pct+'%)':(p.current?'Q'+p.current+'/'+p.total:'Очікує')}</span>
+                ${isDone&&canRetry?`<button class="btn btn-outline btn-sm" style="font-size:.65rem;padding:1px 6px;flex-shrink:0;" onclick="sendRetryLink('${sid}','${(p.name||'').replace(/'/g,"\\'")}')">🔁</button>`:''}
+              </div>
             </div>`;
           }).join('')||'<div class="text-sm" style="padding:0 0 8px;">Учні ще не приєдналися</div>'}
         </div>
       </div>
     </div>`;
   }).join('');
+
+  // Відновлюємо відкриті панелі; якщо openSids порожній — відкриваємо всі (перший рендер)
+  all.forEach(([sid])=>{
+    const detail=el('ld-'+sid);
+    if(!detail)return;
+    if(openSids.size===0||openSids.has(sid))detail.classList.add('open');
+  });
 }
 
 function toggleActiveDetail(sid){el('ld-'+sid)?.classList.toggle('open');}
@@ -2038,6 +2115,80 @@ function stopSession(sid){
   toast('Тест зупинено для всіх учнів');
 }
 
+function pauseSession(sid){
+  if(!db)return;
+  db.ref('sessions/'+sid+'/status').set('paused');
+  toast('⏸ Тест призупинено — екрани учнів заблоковано');
+}
+
+function resumeSession(sid){
+  if(!db)return;
+  db.ref('sessions/'+sid+'/status').set('active');
+  toast('▶ Тест відновлено');
+}
+
+// Слухає статус сесії щоб оновлювати кнопки Пауза/Відновити
+function startSessionPauseListener(sid){
+  if(!db||!sid)return;
+  db.ref('sessions/'+sid+'/status').on('value',snap=>{
+    const st=snap.val();
+    const pauseBtn=document.getElementById('pauseBtn-'+sid.replace(/\W/g,'_'));
+    const resumeBtn=document.getElementById('resumeBtn-'+sid.replace(/\W/g,'_'));
+    if(pauseBtn)pauseBtn.style.display=st==='active'?'':'none';
+    if(resumeBtn)resumeBtn.style.display=st==='paused'?'':'none';
+  });
+}
+
+// Повторне посилання для конкретного учня — нова сесія з тим самим тестом
+async function sendRetryLink(sid, studentName){
+  if(!db){toast('⚠️ Firebase недоступний');return;}
+  const snap=await db.ref('sessions/'+sid).once('value');
+  const origSession=snap.val();
+  if(!origSession){toast('⚠️ Сесія не знайдена');return;}
+
+  const newSid='s_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
+  // Генеруємо новий ключ шифрування
+  const newKey=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
+  // Перешифровуємо питання
+  let newEncQ=origSession.encQ;
+  if(origSession.encQ){
+    const savedUrl=sessionStorage.getItem('examUrl_'+sid);
+    if(savedUrl){
+      const kMatch=savedUrl.match(/[?&]k=([^&]+)/);
+      if(kMatch){
+        try{
+          const qs=await decryptForSession(origSession.encQ,kMatch[1]);
+          newEncQ=await encryptForSession(qs,newKey);
+        }catch(e){/* якщо не вдалось — використовуємо оригінальний encQ */}
+      }
+    }
+  }
+
+  const newPayload={
+    ...origSession,
+    sessionId:newSid,
+    encQ:newEncQ,
+    startedAt:new Date().toISOString(),
+    status:'active',
+    participants:{},
+    retryFor:studentName,
+    stopAt:origSession.finishOnTime
+      ?new Date(Date.now()+(origSession.time+5)*60000).toISOString()
+      :null
+  };
+
+  await db.ref('sessions/'+newSid).set(newPayload);
+  const baseUrl=typeof APP_URL!=='undefined'?APP_URL:(window.location.href.replace(/[^/]*$/,''));
+  const retryUrl=baseUrl+'exam.html?session='+newSid+'&k='+newKey;
+  sessionStorage.setItem('examUrl_'+newSid,retryUrl);
+
+  if(origSession.finishOnAll){listenForCompletion(newSid,newPayload);}
+  startSessionPauseListener(newSid);
+
+  _shareOrCopy(retryUrl,'📋 Посилання для '+studentName+' скопійовано!');
+  toast('🔗 Посилання для '+studentName+' готове і скопійоване!');
+}
+
 function deleteSession(sid){
   if(!db)return;
   if(!confirm('Видалити цей тест з активних? Результати учнів залишаться.'))return;
@@ -2072,7 +2223,7 @@ function syncResultsFromFirebase(){
     _resultsCache=Object.entries(fbRes)
       .map(([k,v])=>({...v,_fbKey:k}))
       .sort((a,b)=>(b.ts||0)-(a.ts||0));
-    localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache.slice(0,500)));
+    localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache.slice(0,LIB_MAX_LOCAL)));
     renderResultsPage(); updateResFilter(); renderDash();
   });
 }
@@ -2178,18 +2329,21 @@ function renderResultsPage(){
           <div class="res-meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
             ${s.subject?`<span class="lib-tag lib-tag-sub">${s.subject}</span>`:''}
             ${s.cls?`<span class="lib-tag lib-tag-cls" style="background:${cc};">${s.cls}</span>`:''}
-            <span class="text-sm"><span style="background:rgba(37,99,235,.12);color:var(--blue);font-weight:700;padding:1px 7px;border-radius:5px;">${s.records.length} учасників</span> · ${s.startedAt?`<span style="background:rgba(26,26,46,.08);color:var(--primary);font-weight:700;padding:1px 7px;border-radius:5px;">${new Date(s.startedAt).toLocaleDateString('uk-UA',{day:'numeric',month:'long'})}</span>`:''}</span>
+            <span class="text-sm"><span style="background:rgba(37,99,235,.12);color:var(--blue);font-weight:700;padding:1px 7px;border-radius:5px;">${s.records.length} учнів</span> · ${s.startedAt?`<span style="background:rgba(26,26,46,.08);color:var(--primary);font-weight:700;padding:1px 7px;border-radius:5px;">${new Date(s.startedAt).toLocaleDateString('uk-UA',{day:'numeric',month:'long'})}</span>`:''}</span>
           </div>
         </div>
         <div class="res-badge" style="background:${grade.c};">${grade.l}</div>
-        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportSessionXLSX('${sid}')" title="XLSX">⬇XLSX</button>
-        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="event.stopPropagation();exportSessionPDF('${sid}')" title="PDF">📄PDF</button>
-        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;background:${isJournaled?'rgba(22,163,74,.12)':'transparent'};color:var(--green);border-color:rgba(22,163,74,.35);" onclick="event.stopPropagation();quickToggleJournal('${sid}')" title="Перенести у журнал" id="qjbtn-${sid.replace(/\W/g,'_')}">${isJournaled?'✓ У журналі':'📋 Журнал'}</button>
-        <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation();clearSessionResults('${sid}')" title="Видалити">🗑</button>
-        <span style="font-size:.75rem;color:rgba(26,26,46,.35);">▼</span>
+        <div class="res-hdr-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="exportSessionXLSX('${sid}')" title="XLSX">⬇XLSX</button>
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="exportSessionPDF('${sid}')" title="PDF">📄PDF</button>
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;background:${isJournaled?'rgba(22,163,74,.12)':'transparent'};color:var(--green);border-color:rgba(22,163,74,.35);" onclick="quickToggleJournal('${sid}')" title="Перенести у журнал" id="qjbtn-${sid.replace(/\W/g,'_')}">${isJournaled?'✓ У журналі':'📋 Журнал'}</button>
+          <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="clearSessionResults('${sid}')" title="Видалити">🗑</button>
+          <span style="font-size:.75rem;color:rgba(26,26,46,.35);margin-left:auto;">▼</span>
+        </div>
       </div>
       <div class="res-detail" id="rd-${sid.replace(/\W/g,'_')}">
-        <table class="rtbl">
+        <div class="res-mob-list" id="rml-${sid.replace(/\W/g,'_')}">${renderResMobile(s.records)}</div>
+        <table class="rtbl res-desk-table" id="rdt-${sid.replace(/\W/g,'_')}">
           <thead><tr>
             <th onclick="sortResSession('${sid.replace(/\W/g,'_')}','student')">Учень</th>
             <th onclick="sortResSession('${sid.replace(/\W/g,'_')}','cls')">Клас</th>
@@ -2210,7 +2364,19 @@ function renderResultsPage(){
   // Restore open panels
   openSids.forEach(id=>{const d=el(id);if(d)d.classList.add('open');});
 }
-function toggleResDetail(sid){el('rd-'+sid)?.classList.toggle('open');}
+function toggleResDetail(sid){
+  const d=el('rd-'+sid);if(!d)return;
+  const wasOpen=d.classList.contains('open');
+  d.classList.toggle('open');
+  if(!wasOpen){
+    const mob=el('rml-'+sid);
+    const desk=el('rdt-'+sid);
+    // Не чіпаємо mob — CSS media query сам вирішує display:block/none по ширині
+    // Лише desk керуємо вручну
+    if(mob)mob.style.display='';
+    if(desk)desk.style.display=(window.innerWidth>=900)?'table':'none';
+  }
+}
 
 // ── JOURNAL TRANSFER CHECKBOXES ──
 function getJournalState(){try{return JSON.parse(localStorage.getItem('sqpro_journal')||'{}');}catch{return{};}}
@@ -2243,12 +2409,11 @@ let rsSortState={};
 let globalSortCol='',globalSortDir=1;
 
 function setGlobalSort(col){
-  // col: 'student', 'pct' (asc), 'pctD' (desc)
   globalSortCol=col==='pctD'?'pct':col;
-  globalSortDir=col==='pct'?1:-1;
-  // Highlight active button
+  // pct без суфікса = найнижчий спочатку, pctD = найвищий спочатку, student = А→Я
+  globalSortDir=col==='pctD'?-1:1;
   ['gSortStudent','gSortPct','gSortPctD'].forEach(id=>{
-    const b=el(id);if(b)b.classList.remove('btn-primary');if(b)b.classList.add('btn-outline');
+    const b=el(id);if(b){b.classList.remove('btn-primary');b.classList.add('btn-outline');}
   });
   const activeId=col==='student'?'gSortStudent':col==='pct'?'gSortPct':'gSortPctD';
   const ab=el(activeId);if(ab){ab.classList.remove('btn-outline');ab.classList.add('btn-primary');}
@@ -2259,8 +2424,13 @@ function sortByGlobal(records){
   if(!globalSortCol)return records;
   return [...records].sort((a,b)=>{
     let va=a[globalSortCol]??'',vb=b[globalSortCol]??'';
-    if(globalSortCol==='pct'||globalSortCol==='violations'){va=+va;vb=+vb;}
-    return va<vb?-globalSortDir:va>vb?globalSortDir:0;
+    if(globalSortCol==='pct'||globalSortCol==='violations'){
+      va=+va;vb=+vb;
+      return(va-vb)*globalSortDir;
+    }
+    // Рядкові поля (student тощо) — локальне порівняння
+    const cmp=String(va).localeCompare(String(vb),'uk',{sensitivity:'base'});
+    return cmp*globalSortDir;
   });
 }
 
@@ -2271,9 +2441,48 @@ function sortResSession(sid,col){
   const recs=(sessions[sid]||[]).sort((a,b)=>{let va=a[col]??'',vb=b[col]??'';if(col==='pct'||col==='violations'){va=+va;vb=+vb;}return va<vb?rsSortState[k]:va>vb?-rsSortState[k]:0;});
   const tb=el('rtb-'+sid);if(tb)tb.innerHTML=renderResRows(recs);
 }
+function renderResMobile(records){
+  if(!records.length)return'<div class="empty-state"><div class="esi">📊</div><p>Немає результатів</p></div>';
+  const fpMap={};
+  records.forEach(r=>{if(r._fp){const k=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');if(!fpMap[k])fpMap[k]=[];fpMap[k].push(r.student);}});
+  return records.map((r,idx)=>{
+    const g=gradeByPct(r.pct);
+    const cc=clsColor(r.cls||'');
+    const fbk=r._fbKey?`'${r._fbKey}'`:'null';
+    const riNum=r._ri!==undefined?r._ri:idx;
+    const w=[];
+    if(r._fp){const k=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');const d=fpMap[k].filter(n=>n!==r.student);if(d.length)w.push('Той самий пристрій: '+d.join(', '));}
+    if(!r._sig)w.push('Немає підпису');
+    if(r._timing?.fastCount>0){const fp=Math.round(r._timing.fastCount/(r.answersSnapshot?.length||1)*100);if(fp>30)w.push('Швидко: '+r._timing.fastCount);}
+    const warn=w.length?` <span title="${w.join('\n')}" style="color:#f59e0b;">⚠️</span>`:'';
+    const ROW='padding:9px 0;border-bottom:1px solid rgba(0,0,0,.1);';
+    const TOP='display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:6px;margin-bottom:4px;width:100%;box-sizing:border-box;';
+    const NAME='font-weight:700;font-size:.86rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;';
+    const SUB='display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:.72rem;';
+    const BTNS='display:flex;gap:4px;flex-shrink:0;';
+    return`<div style="${ROW}">
+      <div style="${TOP}">
+        <div style="${NAME}">${r.student}${warn}</div>
+        <span class="gspan" style="background:${g.c};margin:0;">${g.l}</span>
+        <span style="${BTNS}">
+          ${r.answersSnapshot?`<button class="btn btn-outline btn-sm" onclick="openAnsModal(${riNum})" style="padding:2px 7px;font-size:.72rem;">👁</button>`:''}
+          <button class="btn btn-danger btn-sm" onclick="delResult(${fbk||riNum})" style="padding:2px 7px;font-size:.72rem;">✕</button>
+        </span>
+      </div>
+      <div style="${SUB}">
+        <span style="color:rgba(26,26,46,.5);">${r.pct}%</span>
+        ${r.cls?`<span style="background:${cc};color:#fff;padding:1px 6px;border-radius:4px;font-size:.62rem;font-weight:700;">${r.cls}</span>`:''}
+        ${r.violations>0?`<span style="color:#dc2626;font-weight:600;">${r.violations} пор.</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
 function renderResRows(records){
   const fpMap={};
   records.forEach(r=>{if(r._fp){const key=[r._fp.ua,r._fp.w,r._fp.h,r._fp.tz].join('|');if(!fpMap[key])fpMap[key]=[];fpMap[key].push(r.student);}});
+
+  const isMob=false; // CSS керує видимістю — .res-mob-list / .res-desk-table
+
   return records.map((r,idx)=>{
     const g=gradeByPct(r.pct);
     const warnings=[];
@@ -2281,17 +2490,21 @@ function renderResRows(records){
     if(!r._sig)warnings.push('Немає підпису результату');
     if(r._timing&&r._timing.fastCount>0){const fp=Math.round(r._timing.fastCount/(r.answersSnapshot?.length||1)*100);if(fp>30)warnings.push('Підозрілий час: '+r._timing.fastCount+' відп < 1.5с');}
     const warn=warnings.length?`<span title="${warnings.join('\n')}" style="color:#f59e0b;cursor:help;">⚠️</span>`:'';
-    // Використовуємо _fbKey (стабільний) замість індексу
     const fbk=r._fbKey?`'${r._fbKey}'`:'null';
     const riNum=r._ri!==undefined?r._ri:idx;
+    const btns=`${r.answersSnapshot?`<button class="btn btn-outline btn-sm" onclick="openAnsModal(${riNum})" title="Відповіді">👁</button>`:''}<button class="btn btn-danger btn-sm" onclick="delResult(${fbk||riNum})" title="Видалити">✕</button>`;
+    const gradeSpan=`<span class="gspan" style="background:${g.c}">${g.l}</span>`;
+    const violSpan=r.violations>0?`<span class="tag tag-r">${r.violations}</span>`:'<span class="tag tag-g">0</span>';
+
     return`<tr>
     <td><strong>${r.student}</strong> ${warn}</td>
     <td class="text-sm">${r.cls||'—'}</td>
     <td class="text-mono">${r.pct}%</td>
-    <td><span class="gspan" style="background:${g.c}">${g.l}</span></td>
-    <td>${r.violations>0?`<span class="tag tag-r">${r.violations}</span>`:'<span class="tag tag-g">0</span>'}</td>
-    <td style="display:flex;gap:4px;">${r.answersSnapshot?`<button class="btn btn-outline btn-sm" onclick="openAnsModal(${riNum})" title="Відповіді">👁</button>`:''}<button class="btn btn-danger btn-sm" onclick="delResult(${fbk||riNum})" title="Видалити">✕</button></td>
-  </tr>`;}).join('');
+    <td>${gradeSpan}</td>
+    <td>${violSpan}</td>
+    <td style="display:flex;gap:4px;">${btns}</td>
+  </tr>`;
+  }).join('');
 }
 function renderArchiveResRows(records,sid){
   return records.map((r,idx)=>{
@@ -2369,16 +2582,25 @@ function openAnsModal(ri){
   el('ansModalContent').innerHTML=timingHtml+answersHtml+violationsHtml;
   el('ansModal').classList.add('show');
 }
-function delResult(i){
-  const r=_resultsCache[i];
-  if(!r)return;
-  if(db&&r._fbKey){
-    db.ref('results/'+r._fbKey).remove();
-    // Firebase onValue will update other devices automatically
+function delResult(fbKeyOrIdx){
+  // Підтримуємо і _fbKey (рядок) і числовий індекс (fallback)
+  let r,idx;
+  if(typeof fbKeyOrIdx==='string'){
+    idx=_resultsCache.findIndex(x=>x._fbKey===fbKeyOrIdx);
+    r=idx>=0?_resultsCache[idx]:null;
+  } else {
+    idx=fbKeyOrIdx;
+    r=_resultsCache[idx];
   }
-  _resultsCache.splice(i,1);
+  if(!r){toast('⚠️ Результат не знайдено');return;}
+  if(!confirm('Видалити результат учня «'+r.student+'»?'))return;
+  if(db&&r._fbKey){
+    db.ref('results/'+r._fbKey).remove().catch(e=>toast('⚠️ Firebase: '+e.message));
+  }
+  if(idx>=0)_resultsCache.splice(idx,1);
   localStorage.setItem('sqpro_results',JSON.stringify(_resultsCache));
   renderResultsPage(); updateResFilter(); renderDash();
+  toast('✓ Результат видалено');
 }
 // ══ XLSX EXPORT (SheetJS) ══
 function _getXLSX(){
@@ -2902,14 +3124,16 @@ function renderArchivePage(){
           <div class="res-meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
             ${s.subject?`<span class="lib-tag lib-tag-sub">${s.subject}</span>`:''}
             ${s.cls?`<span class="lib-tag lib-tag-cls" style="background:${cc};">${s.cls}</span>`:''}
-            <span class="text-sm"><span style="background:rgba(37,99,235,.12);color:var(--blue);font-weight:700;padding:1px 7px;border-radius:5px;">${s.records.length} учасників</span>${s.startedAt?' · <span style="background:rgba(26,26,46,.08);color:var(--primary);font-weight:700;padding:1px 7px;border-radius:5px;">'+new Date(s.startedAt).toLocaleDateString('uk-UA',{day:'numeric',month:'long'})+'</span>':''}</span>
+            <span class="text-sm"><span style="background:rgba(37,99,235,.12);color:var(--blue);font-weight:700;padding:1px 7px;border-radius:5px;">${s.records.length} учнів</span>${s.startedAt?' · <span style="background:rgba(26,26,46,.08);color:var(--primary);font-weight:700;padding:1px 7px;border-radius:5px;">'+new Date(s.startedAt).toLocaleDateString('uk-UA',{day:'numeric',month:'long'})+'</span>':''}</span>
           </div>
         </div>
         <div class="res-badge" style="background:${grade.c};">${grade.l}</div>
-        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="event.stopPropagation();exportArchiveSessionXLSX('${sid}')" title="XLSX">⬇XLSX</button>
-        <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="event.stopPropagation();exportArchiveSessionPDF('${sid}')" title="PDF">📄PDF</button>
-        <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation();deleteArchiveSession('${sid}')" title="Видалити назавжди">🗑 Видалити</button>
-        <span style="font-size:.75rem;color:rgba(26,26,46,.35);">▼</span>
+        <div class="res-hdr-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;" onclick="exportArchiveSessionXLSX('${sid}')" title="XLSX">⬇XLSX</button>
+          <button class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:.72rem;color:#dc2626;border-color:rgba(220,38,38,.3);" onclick="exportArchiveSessionPDF('${sid}')" title="PDF">📄PDF</button>
+          <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="deleteArchiveSession('${sid}')" title="Видалити назавжди">🗑 Видалити</button>
+          <span style="font-size:.75rem;color:rgba(26,26,46,.35);margin-left:auto;">▼</span>
+        </div>
       </div>
       <label style="display:flex;align-items:center;gap:7px;padding:7px 16px;border-top:1px solid var(--border);background:rgba(22,163,74,.07);cursor:pointer;font-size:.76rem;font-weight:600;color:rgba(22,163,74,.8);" onclick="event.stopPropagation()">
         <input type="checkbox" id="arcjcb-${sidSafe}" style="width:auto;cursor:pointer;" checked onchange="unarchiveSession('${sid}',this)">
@@ -3021,7 +3245,7 @@ function renderDash(){
 function renderDashLiveProgress(){
   const dlp=el('dashLiveProgress');if(!dlp)return;
   const all=_lastActiveSnap||{};
-  const active=Object.entries(all).filter(([,s])=>s.status==='active');
+  const active=Object.entries(all).filter(([,s])=>s.status==='active'||s.status==='paused');
   // Рахуємо зведені лічильники по всіх активних сесіях
   let totalAll=0,totalDone=0,totalInProg=0;
   active.forEach(([,s])=>{
@@ -3044,18 +3268,42 @@ function renderDashLiveProgress(){
     const done=entries.filter(p=>p.status==='done').length;
     const inProg=entries.filter(p=>p.status!=='done'&&(p.current>0||p.status==='active')).length;
     const waiting=entries.filter(p=>!p.status||p.status==='waiting'||(!p.current&&p.status!=='done')).length;
-    if(!entries.length)return`<div style="padding:8px 0;font-size:.82rem;color:rgba(26,26,46,.4);">${s.title||'Тест'} — учні ще не приєдналися</div>`;
+    const clsStr=s.launchClass||s.cls||'';
+    const clsM=clsStr.match(/^(\d+)[\s\-–—]?([А-ЯҐЄІЇа-яґєіїA-Za-z]?)/u)||[];
+    const clsDigit=clsM[1]||'';const clsLetter=clsM[2]||'';
+    const clsDisplay=clsDigit+(clsLetter?'-'+clsLetter:'');
+    const cc=clsColor(clsStr);
+    const clsIconFs=clsDisplay.length<=3?'1rem':clsDisplay.length<=4?'.85rem':'.75rem';
+    const clsSquare=clsDisplay
+      ?`<div style="width:38px;height:38px;border-radius:8px;background:${cc};color:#fff;font-weight:900;font-size:${clsIconFs};display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:-.02em;">${clsDisplay}</div>`
+      :'';
+    if(!entries.length)return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+      ${clsSquare}
+      <div style="font-size:.82rem;color:rgba(26,26,46,.4);">${s.title||'Тест'} — учні ще не приєдналися</div>
+    </div>`;
+    const pctDone=entries.length>0?Math.round(done/entries.length*100):0;
     return`<div style="margin-bottom:16px;">
       <div style="margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:6px;">
-          <div style="font-weight:700;font-size:.88rem;">${s.title||'Тест'}</div>
-          ${s.cls?`<span style="background:rgba(37,99,235,.12);color:var(--blue);border:1.5px solid rgba(37,99,235,.25);border-radius:20px;padding:2px 11px;font-size:.7rem;font-weight:700;">🏫 ${s.cls}</span>`:''}
-          <span id="dt-${sid}" style="background:rgba(22,163,74,.1);color:#16a34a;border:1.5px solid rgba(22,163,74,.22);border-radius:20px;padding:2px 11px;font-size:.7rem;font-weight:700;font-variant-numeric:tabular-nums;">⏱ ${_fmtElapsed(s.startedAt)}</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-bottom:6px;">
+          ${clsSquare}
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <div style="font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.title||'Тест'}</div>
+              <span id="dt-${sid}" style="background:rgba(22,163,74,.1);color:#16a34a;border:1.5px solid rgba(22,163,74,.22);border-radius:20px;padding:2px 9px;font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;">⏱ ${_fmtElapsed(s.startedAt)}</span>
+              <button class="btn btn-outline btn-sm" style="margin-left:auto;font-size:.68rem;padding:2px 8px;white-space:nowrap;" onclick="copySessionLink('${sid}')" title="Скопіювати посилання">🔗 Посилання</button>
+            </div>
+          </div>
         </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
           <span style="background:rgba(22,163,74,.12);color:#16a34a;border:1px solid rgba(22,163,74,.25);padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700;">✅ ${done} здали</span>
           <span style="background:rgba(37,99,235,.1);color:var(--blue);border:1px solid rgba(37,99,235,.2);padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700;">⏳ ${inProg} в процесі</span>
           <span style="background:rgba(26,26,46,.06);color:rgba(26,26,46,.5);border:1px solid rgba(26,26,46,.1);padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700;">👥 ${entries.length}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:1;height:10px;background:rgba(26,26,46,.08);border-radius:5px;overflow:hidden;">
+            <div style="height:100%;width:${pctDone}%;background:var(--green);border-radius:5px;transition:width .5s;"></div>
+          </div>
+          <span style="font-size:.78rem;font-weight:800;color:${done===entries.length&&entries.length>0?'var(--green)':'rgba(26,26,46,.5)'};white-space:nowrap;min-width:52px;text-align:right;font-variant-numeric:tabular-nums;">${done} / ${entries.length}</span>
         </div>
       </div>
       <div class="progress-grid">
@@ -3134,6 +3382,7 @@ function renderPreviewQ(){
 // ══ UTILS ══
 function el(id){return document.getElementById(id);}
 function v(id){const e=el(id);return e?e.value:'';}
+/** Повертає boolean — чи увімкнено security checkbox (з localStorage як fallback) */
 function getSec(id){
   const e=el(id);
   if(e)return e.checked;
@@ -3141,6 +3390,7 @@ function getSec(id){
   try{const s=JSON.parse(localStorage.getItem('sqpro_sec')||'{}');return s[id]!==undefined?s[id]:true;}
   catch{return true;}
 }
+/** Повертає number — числове значення security поля (напр. maxViolations) */
 function getSecVal(id){const e=el(id);return e?parseInt(e.value)||3:3;}
 function closeModal(id){el(id).classList.remove('show');}
 function toast(msg){const t=el('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
@@ -3159,10 +3409,10 @@ function _postAuthInit(){
   renderDash(); renderResultsPage(); updateResFilter(); updateLibFilters(); updateArchiveBadge();
   const saved=JSON.parse(localStorage.getItem('sqpro_sec')||'{}');
   if(saved.maxviol!==undefined){const e=el('s-maxviol');if(e)e.value=saved.maxviol;}
-  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf','s-coloros','s-zwc','finishOnTime'].forEach(id=>{
+  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf','s-coloros','s-zwc','finishOnTime','finishOnAll','allowRetry'].forEach(id=>{
     if(saved[id]!==undefined){const e=el(id);if(e)e.checked=saved[id];}
   });
-  document.querySelectorAll('#s-tab,#s-blur,#s-ctx,#s-copy,#s-prtsc,#s-wm,#s-shuffle,#s-fullscreen,#s-raf,#s-coloros,#s-zwc,#finishOnTime,#s-maxviol').forEach(inp=>{
+  document.querySelectorAll('#s-tab,#s-blur,#s-ctx,#s-copy,#s-prtsc,#s-wm,#s-shuffle,#s-fullscreen,#s-raf,#s-coloros,#s-zwc,#finishOnTime,#finishOnAll,#allowRetry,#s-maxviol').forEach(inp=>{
     inp.addEventListener('change',saveSecSettings);inp.addEventListener('input',saveSecSettings);
   });
   // s-mood зберігається окремо (елемент у конструкторі)
@@ -3188,10 +3438,11 @@ function updateCreatorDataLists(){
   }
 }
 
-function copyFirebaseRules(){
-  const rules=`{
+function _getFirebaseRulesText(){
+  return`{
   "rules": {
     "sessions": {
+      ".read": "auth != null",
       "$sid": {
         ".read": true,
         ".write": "auth != null",
@@ -3209,8 +3460,8 @@ function copyFirebaseRules(){
       ".read": "auth != null",
       ".write": "auth != null",
       "$rid": {
-        ".write": "auth != null || (!data.exists() && newData.hasChildren(['sessionId','student','pct','ts']) && newData.child('pct').isNumber() && newData.child('pct').val() >= 0 && newData.child('pct').val() <= 100 && (now - newData.child('ts').val()) < 300000 && root.child('sessions').child(newData.child('sessionId').val()).exists())",
-        ".validate": "!newData.exists() || (newData.child('student').isString() && newData.child('student').val().length > 0 && newData.child('student').val().length < 100)"
+        ".write": "auth != null || (!data.exists() && newData.hasChildren(['sessionId','student','pct','ts']) && newData.child('student').isString() && newData.child('student').val().length > 0 && newData.child('student').val().length < 100 && newData.child('pct').isNumber() && newData.child('pct').val() >= 0 && newData.child('pct').val() <= 100 && newData.child('ts').isNumber() && (now - newData.child('ts').val()) < 300000 && root.child('sessions').child(newData.child('sessionId').val()).exists() && (root.child('sessions').child(newData.child('sessionId').val()).child('status').val() == 'active' || root.child('sessions').child(newData.child('sessionId').val()).child('status').val() == 'paused'))",
+        ".validate": "newData.hasChildren(['sessionId','student','pct','ts'])"
       }
     },
     "library": { ".read": "auth != null", ".write": "auth != null" },
@@ -3220,7 +3471,12 @@ function copyFirebaseRules(){
       "theme": { ".read": true }
     }
   }
-}`;
+}`;}
+
+function initRulesBox(){const box=el('fbRulesBox');if(box&&!box.value)box.value=_getFirebaseRulesText();}
+
+function copyFirebaseRules(){
+  const rules=_getFirebaseRulesText();
   navigator.clipboard.writeText(rules)
     .then(()=>toast('📋 Rules скопійовано! Вставте у Firebase Console'))
     .catch(()=>{const ta=document.createElement('textarea');ta.value=rules;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('📋 Rules скопійовано!');});
@@ -3228,7 +3484,7 @@ function copyFirebaseRules(){
 
 function saveSecSettings(){
   const data={maxviol:getSecVal('s-maxviol')};
-  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf','s-coloros','s-zwc','finishOnTime'].forEach(id=>{
+  ['s-tab','s-blur','s-ctx','s-copy','s-prtsc','s-wm','s-shuffle','s-fullscreen','s-raf','s-coloros','s-zwc','finishOnTime','finishOnAll','allowRetry'].forEach(id=>{
     const e=el(id);if(e)data[id]=e.checked;
   });
   localStorage.setItem('sqpro_sec',JSON.stringify(data));
@@ -3251,14 +3507,14 @@ async function runSecAudit(){
   checks.push({label:'Перемішування питань',ok:getSec('s-shuffle'),info:getSec('s-shuffle')?'Кожен учень бачить інший порядок':'Рекомендуємо увімкнути'});
   checks.push({label:'📱 Повноекранний режим',ok:getSec('s-fullscreen'),info:getSec('s-fullscreen')?'Увімкнено — вихід з fullscreen = порушення':'Вимкнено (рекомендовано для мобільних)'});
   checks.push({label:'📱 RAF-детектор шторки',ok:getSec('s-raf'),info:getSec('s-raf')?'Увімкнено — виявляє шторку сповіщень':'Вимкнено (рекомендовано для мобільних)'});
-  checks.push({label:'📱 Захист ColorOS / MIUI',ok:getSec('s-coloros'),info:getSec('s-coloros')?'Увімкнено — ResizeObserver + DPR + touchstart':'Вимкнено (рекомендовано якщо учні на Oppo/Realme/Xiaomi)'});
+  checks.push({label:'📱 Захист ColorOS / MIUI / Opera',ok:getSec('s-coloros'),info:getSec('s-coloros')?'Увімкнено — ResizeObserver + outerWidth + DPR + touchstart':'Вимкнено (рекомендовано якщо учні на Oppo/Realme/Xiaomi/Opera)'});
   checks.push({label:'🤖 Захист від ШІ-зчитування',ok:getSec('s-zwc'),info:getSec('s-zwc')?'Увімкнено — ZW-символи блокують TTS і ШІ-агентів':'Вимкнено (рекомендуємо увімкнути)'});
 
   if(db&&currentUser){
     try{
       const sessSnap=await db.ref('sessions').once('value');
       const allSess=sessSnap.val()||{};
-      const stale=Object.values(allSess).filter(s=>s.status==='active'&&s.startedAt&&(Date.now()-new Date(s.startedAt).getTime())>4*3600*1000).length;
+      const stale=Object.values(allSess).filter(s=>s.status==='active'&&s.startedAt&&(Date.now()-new Date(s.startedAt).getTime())>SESSION_STALE_HOURS*3600*1000).length;
       checks.push({label:'Застарілі сесії (>4год)',ok:stale===0,info:stale===0?'Немає':stale+' — зупиніть у розділі Активні тести'});
     }catch(e){
       checks.push({label:'Застарілі сесії',ok:false,info:'Не вдалось: '+e.message});

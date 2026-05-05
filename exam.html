@@ -210,7 +210,23 @@ input[type=text]:focus{border-color:var(--ink);}
 <script>
 'use strict';
 
-// ── THEME ──
+// ══ CONSTANTS ══
+const DEBUGGER_PAUSE_MS=4000;     // delta > N ms → підозра на debugger
+const RAF_PAUSE_MS=2500;          // RAF delta > N ms → підозра на шторку
+const BLUR_GRACE_MS=600;          // ігнорувати blur коротший за N ms
+const FOCUS_VIOL_COOLDOWN_MS=2000;// мін. час між фокус-порушеннями
+const SPLIT_VIOL_COOLDOWN_MS=5000;// мін. час між split-screen порушеннями
+const FS_ENTRY_GRACE_MS=5000;     // ігнорувати fullscreenchange перші N ms
+const FS_EXIT_CONFIRM_MS=1500;    // затримка підтвердження виходу з fullscreen
+const ORIENT_GRACE_MS=1500;       // затримка після зміни орієнтації перед перевіркою
+const RESIZE_OBS_DELAY_MS=1500;   // затримка запуску ResizeObserver після layout
+const BFCACHE_AWAY_THRESHOLD_MS=1500; // мін. час відсутності щоб вважати порушенням (iOS BFCache)
+const FAST_ANSWER_THRESHOLD_MS=1500;  // відповідь швидша N ms — підозра
+const VIOL_AUTO_FINISH_DELAY_MS=1500; // пауза після max порушень перед finishExam
+const INCOGNITO_QUOTA_THRESHOLD=150*1024*1024; // <150MB quota → incognito
+const INCOGNITO_DETECT_DELAY_MS=2000;  // затримка перед фіксацією incognito (після старту)
+
+
 function applyExamTheme(t){
   if(!t)return;
   const logo=t.logo||'🧪';
@@ -274,15 +290,15 @@ function loadExamTheme(){
   const ua=navigator.userAgent||'';
   // Telegram ін'єктує window.Telegram.WebApp у всі свої WebView
   const isTgObj=!!(window.Telegram?.WebApp||window.TelegramWebviewProxy);
-  // UA-рядки Telegram WebView (Android і iOS)
   const isTgUa=/\bTelegram\b/i.test(ua)||/TelegramBot/i.test(ua);
-  // Загальні вбудовані WebView (Instagram, Facebook, TikTok, Snapchat тощо)
-  // На Android вбудований WebView не має 'Chrome' АБО має 'wv'
-  const isAndroidWV=(/Android/i.test(ua))&&(/wv\b/.test(ua)||!/Chrome/i.test(ua));
-  // iOS WebView — є WebKit але немає Safari в UA (Safari додає "Safari/xxx")
-  const isIosWV=(/iPhone|iPad|iPod/i.test(ua))&&/WebKit/i.test(ua)&&!/Safari/i.test(ua);
   // Відомі in-app браузери соцмереж
   const isSocialWV=/FBAN|FBAV|Instagram|Line\/|Snapchat|TikTok|Pinterest/i.test(ua);
+  // Виключення — відомі легітимні мобільні браузери що можуть не мати 'Chrome' в UA
+  const isLegitBrowser=/MiuiBrowser|MiBrowser|XiaoMi|SamsungBrowser|OPR\/|Opera|EdgA|Firefox|YaBrowser|UCBrowser|DuckDuckGo|Brave|Vivaldi/i.test(ua);
+  // Android WebView — лише якщо є явна ознака 'wv' і немає легітимних браузерів
+  const isAndroidWV=!isLegitBrowser&&(/Android/i.test(ua))&&/wv\b/.test(ua);
+  // iOS WebView — є WebKit але немає Safari і немає CriOS/FxiOS (Chrome/Firefox на iOS)
+  const isIosWV=(/iPhone|iPad|iPod/i.test(ua))&&/WebKit/i.test(ua)&&!/Safari/i.test(ua)&&!/CriOS|FxiOS|OPiOS/i.test(ua);
 
   if(isTgObj||isTgUa||isAndroidWV||isIosWV||isSocialWV){
     const isIos=/iPhone|iPad|iPod/i.test(ua);
@@ -319,6 +335,7 @@ async function decryptData(enc,keyRaw){
 
 let db=null, payload=null, sessionRef=null;
 let examQs=[], examAnswers=[], examViolations=[];
+let answerTimes=[]; // час відповіді на кожне питання (мс) — окремо від examAnswers
 let violCount=0, currentQ=0;
 let timerInt=null, perqInt=null, timeLeft=0, perqLeft=0;
 let examActive=false;
@@ -338,7 +355,7 @@ let _lastTick=Date.now();
 setInterval(()=>{
   const now=Date.now();const delta=now-_lastTick;_lastTick=now;
   if(!examActive||_resultSubmitted||document.hidden)return;
-  if(delta>4000)violation('DevTools','Виявлено паузу виконання — підозра на відладчик.');
+  if(delta>DEBUGGER_PAUSE_MS)violation('DevTools','Виявлено паузу виконання — підозра на відладчик.');
 },1000);
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden){_lastTick=Date.now();if(examActive)blurBody(false);}
@@ -382,7 +399,10 @@ window.addEventListener('DOMContentLoaded',async()=>{
 
       sessionRef=db.ref('sessions/'+sid);
       sessionRef.child('status').on('value',s=>{
-        if((s.val()==='stopped')&&examActive)showStopped();
+        const st=s.val();
+        if(st==='stopped'&&examActive)showStopped();
+        if(st==='paused'&&examActive)showPaused();
+        if(st==='active'&&_examPaused)resumeFromPause();
       });
       showIntro();
     }catch(e){showErr('Помилка: '+e.message);}
@@ -418,6 +438,78 @@ function showStopped(){
     <h2>Тест зупинено</h2>
     <p>Вчитель завершив цей тест.<br>Ваш результат збережено.</p>
   </div>`;
+}
+
+let _examPaused=false;
+let _pauseOverlay=null;
+
+function showPaused(){
+  if(_examPaused||!examActive)return;
+  _examPaused=true;
+  // Зупиняємо таймери
+  clearInterval(timerInt);clearInterval(perqInt);
+  // Накладаємо overlay поверх тесту
+  if(!_pauseOverlay){
+    _pauseOverlay=document.createElement('div');
+    _pauseOverlay.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(26,26,46,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
+    _pauseOverlay.innerHTML=`
+      <div style="font-size:3.5rem;">⏸</div>
+      <div style="font-size:1.3rem;font-weight:800;color:#fff;">Тест призупинено</div>
+      <div style="font-size:.9rem;color:rgba(255,255,255,.6);text-align:center;max-width:280px;line-height:1.6;">Вчитель тимчасово зупинив тест.<br>Очікуйте — він відновиться автоматично.</div>
+    `;
+    document.body.appendChild(_pauseOverlay);
+  }
+  _pauseOverlay.style.display='flex';
+}
+
+function resumeFromPause(){
+  if(!_examPaused)return;
+  _examPaused=false;
+  if(_pauseOverlay)_pauseOverlay.style.display='none';
+
+  if(!examActive||_resultSubmitted)return;
+
+  // Відновлюємо загальний таймер
+  if(payload.timerMode!=='perq'&&timeLeft>0){
+    clearInterval(timerInt);
+    timerInt=setInterval(()=>{
+      if(!examActive||_resultSubmitted){clearInterval(timerInt);return;}
+      timeLeft--;
+      const b=g('prog');if(b)b.style.width=(timeLeft/(payload.time*60)*100)+'%';
+      if(timeLeft<=0){clearInterval(timerInt);finishExam('timeout');}
+    },1000);
+  }
+
+  // Відновлюємо per-question таймер якщо він використовується
+  if(payload.timerMode==='perq'&&perqLeft>0){
+    clearInterval(perqInt);
+    perqInt=setInterval(()=>{
+      if(!examActive||_resultSubmitted){clearInterval(perqInt);return;}
+      perqLeft--;
+      const pb=g('perqBar');if(pb)pb.style.width=(perqLeft/((payload.timePerQ||30))*100)+'%';
+      if(perqLeft<=0){clearInterval(perqInt);goNext();}
+    },1000);
+  }
+
+  // Повертаємо fullscreen якщо він був активний до паузи
+  if(payload.secSettings?.fullscreen){
+    const isFs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+    if(!isFs){
+      // Потрібен user gesture — показуємо overlay з кнопкою
+      const resumeFs=document.createElement('div');
+      resumeFs.style.cssText='position:fixed;inset:0;z-index:8999;background:rgba(26,26,46,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
+      resumeFs.innerHTML=`
+        <div style="font-size:2.5rem;">▶</div>
+        <div style="font-size:1.1rem;font-weight:800;color:#fff;">Натисніть щоб продовжити</div>
+        <div style="font-size:.85rem;color:rgba(255,255,255,.6);">Тест продовжується у повноекранному режимі</div>
+      `;
+      resumeFs.onclick=()=>{
+        _requestFullscreen();
+        document.body.removeChild(resumeFs);
+      };
+      document.body.appendChild(resumeFs);
+    }
+  }
 }
 
 // ── INTRO ──
@@ -475,14 +567,37 @@ function startExam(){
   studentName=name;
   studentClass=((payload.launchClass||'').trim()||(payload.cls||'').trim());
   participantId='p_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
+
+  // ── Перевірка повторного проходження за fingerprint ──
+  // Будуємо той самий fingerprint що і у finishExam щоб порівняти
+  const _fpNow={
+    ua:navigator.userAgent.slice(0,80),
+    lang:navigator.language,
+    tz:Intl.DateTimeFormat().resolvedOptions().timeZone,
+    w:screen.width,h:screen.height,
+    cores:navigator.hardwareConcurrency||0
+  };
+  const fpKey=btoa([_fpNow.ua.slice(0,30),_fpNow.tz,_fpNow.w,_fpNow.h,_fpNow.cores].join('|')).slice(0,24);
+  const sessDone=JSON.parse(localStorage.getItem('sqpro_fp_done')||'{}');
+  if(sessDone[payload.sessionId]===fpKey){
+    // Той самий пристрій вже здав цей тест
+    alert('⚠️ Ти вже проходив цей тест на цьому пристрої.');
+    return;
+  }
+  // Зберігаємо fingerprint після фінішу (викликається в finishExam async блоці)
+  window._examFpKey=fpKey;
   // Якщо вчитель вимкнув екран настрою — пропускаємо
   if(payload.secSettings?.mood===false){
     _selectedMood=null;
-    // Fullscreen через user gesture вже втрачено, але запускаємо тест
     if(payload.secSettings?.fullscreen){
       const fsEl=document.documentElement;
       const req=fsEl.requestFullscreen||fsEl.webkitRequestFullscreen||fsEl.mozRequestFullScreen||fsEl.msRequestFullscreen;
-      if(req){req.call(fsEl).then(()=>{_fsActive=true;_launchExam();}).catch(()=>{_fsActive=false;_launchExam();});return;}
+      if(req){
+        req.call(fsEl)
+          .then(()=>{_fsActive=true;_fsEntryTime=Date.now();_lockPortrait();_launchExam();})
+          .catch(()=>{_fsActive=false;_launchExam();});
+        return;
+      }
     }
     _launchExam();
     return;
@@ -517,7 +632,7 @@ function showMoodCheck(){
             </button>`).join('')}
         </div>
         <div class="mood-selected-msg" id="moodMsg" style="opacity:0;">‎</div>
-        <button class="btn-mood-next" id="moodNext" onclick="confirmMood()">Розпочати тест →</button>
+        <button class="btn-mood-next ready" id="moodNext" onclick="confirmMood()">Розпочати тест →</button>
       </div>
     </div>`;
 }
@@ -537,18 +652,17 @@ function selectMood(i){
 }
 
 function confirmMood(){
-  if(_selectedMood===null)return;
-  const m=MOODS[_selectedMood];
-  if(typeof db!=='undefined'&&db&&typeof sessionRef!=='undefined'&&sessionRef){
+  const m=_selectedMood!==null?MOODS[_selectedMood]:null;
+  if(m&&typeof db!=='undefined'&&db&&typeof sessionRef!=='undefined'&&sessionRef){
     sessionRef.child('participants/'+participantId+'/mood').set({emoji:m.emoji,label:m.label}).catch(()=>{});
   }
-  // FULLSCREEN — тільки тут, у прямому обробнику user gesture (tap/click)
-  // requestFullscreen дозволений лише в стеку виклику від дії користувача
   if(payload.secSettings?.fullscreen){
     const fsEl=document.documentElement;
     const req=fsEl.requestFullscreen||fsEl.webkitRequestFullscreen||fsEl.mozRequestFullScreen||fsEl.msRequestFullscreen;
     if(req){
-      req.call(fsEl).then(()=>{ _fsActive=true; _launchExam(); }).catch(()=>{ _fsActive=false; _launchExam(); });
+      req.call(fsEl)
+        .then(()=>{_fsActive=true;_fsEntryTime=Date.now();_lockPortrait();_launchExam();})
+        .catch(()=>{_fsActive=false;_launchExam();});
       return;
     }
   }
@@ -586,8 +700,14 @@ function _launchExam(){
   }
 
   examAnswers=examQs.map(()=>[]);
+  answerTimes=new Array(examQs.length).fill(0);
   examViolations=[];violCount=0;currentQ=0;multiSel=[];
   examActive=true;
+
+  // ── Безпека: видаляємо відкриті питання з глобального payload ──
+  // examQs вже побудовані; correctIndices живуть тільки у WeakMap.
+  // Без цього учень може прочитати payload.questions у консолі.
+  try{payload.questions=null;payload.encQ=null;}catch(_){}
 
   g('bar').style.display='flex';
   g('progBar').style.display='block';
@@ -702,14 +822,12 @@ function updatePerqDisplay(){
 
 // ── ANSWER LOGIC ──
 let _qStartTime=0;
-function renderQ_trackTime(){_qStartTime=Date.now();}
 
 function doPick(oi){
   if(!examActive)return;
   const timeSpent=Date.now()-_qStartTime;
   examAnswers[currentQ]=[oi];
-  if(!examAnswers._times)examAnswers._times=[];
-  examAnswers._times[currentQ]=timeSpent;
+  answerTimes[currentQ]=timeSpent;
   // Disable all
   document.querySelectorAll('.opt').forEach(el=>el.classList.add('disabled'));
   const sel=g('opt'+oi);
@@ -737,8 +855,7 @@ function doToggle(oi){
 function confirmMulti(){
   if(!examActive)return;
   examAnswers[currentQ]=[...multiSel];
-  if(!examAnswers._times)examAnswers._times=[];
-  examAnswers._times[currentQ]=Date.now()-_qStartTime;
+  answerTimes[currentQ]=Date.now()-_qStartTime;
   document.querySelectorAll('.opt').forEach(el=>el.classList.add('disabled'));
   const btn=g('confirmBtn');if(btn)btn.disabled=true;
   clearInterval(perqInt);
@@ -779,9 +896,10 @@ let _splitCheckInt=null;
 // ── МОБІЛЬНІ ЗАХИСТИ — змінні стану ──
 let _rafId=null, _rafLastTs=0, _rafPauseTimer=null;
 let _blurTimer=null, _blurPendingAt=0;
-let _fsActive=false, _fsExitViolTimer=null;
+let _fsActive=false, _fsExitViolTimer=null, _fsEntryTime=0;
 let _lastOrient=(screen.orientation?.angle??window.orientation??0);
 let _orientChangeTime=0;
+let _onOrientRef=null; // збережене посилання для removeEventListener
 let _pipCheckInt=null;
 let _vvCheckInt=null;
 let _pageHideTs=0;
@@ -805,6 +923,9 @@ function attachSecurity(){
     if(window.visualViewport){
       window.visualViewport.addEventListener('resize',checkSplitScreen);
     }
+    // Opera Mobile / Firefox: split-screen змінює innerWidth але не screen.width
+    // window 'resize' ловить це там де visualViewport не спрацьовує
+    window.addEventListener('resize',checkSplitScreen);
   }
   if(sec.ctx)document.addEventListener('contextmenu',onCtx);
   if(sec.copy){document.addEventListener('copy',onCopy);document.addEventListener('cut',onCopy);}
@@ -827,7 +948,7 @@ function attachSecurity(){
       const delta=ts-_rafLastTs;
       _rafLastTs=ts;
       // delta > 2500ms і вкладка видима і фокус є — підозра на шторку/overlay
-      if(delta>2500&&!document.hidden&&_blurPendingAt===0){
+      if(delta>RAF_PAUSE_MS&&!document.hidden&&_blurPendingAt===0){
         violation('Системна шторка','Виявлено зупинку браузера — можливо відкрита шторка сповіщень або інший додаток.');
       }
       _rafId=requestAnimationFrame(rafLoop);
@@ -857,12 +978,13 @@ function attachSecurity(){
         if(!examActive||_resultSubmitted)return;
         // Після зміни орієнтації перевіряємо розміри
         checkSplitScreen();
-      },1500);
+      },ORIENT_GRACE_MS);
     };
+    _onOrientRef=_onOrient;
     if(screen.orientation){
-      screen.orientation.addEventListener('change',_onOrient);
+      screen.orientation.addEventListener('change',_onOrientRef);
     } else {
-      window.addEventListener('orientationchange',_onOrient);
+      window.addEventListener('orientationchange',_onOrientRef);
     }
   }
 
@@ -870,7 +992,7 @@ function attachSecurity(){
   if(sec.tab){
     _pipCheckInt=setInterval(()=>{
       if(!examActive||_resultSubmitted)return;
-      if(Date.now()-_lastSplitViol<5000)return;
+      if(Date.now()-_lastSplitViol<SPLIT_VIOL_COOLDOWN_MS)return;
       if(document.pictureInPictureElement){
         _lastSplitViol=Date.now();
         violation('Picture-in-Picture','Виявлено відео у плаваючому вікні — закрийте його.');
@@ -885,29 +1007,38 @@ function attachSecurity(){
     },1200);
   }
 
-  // ══ ColorOS / MIUI / OxygenOS ЗАХИСТИ ══
+  // ══ ColorOS / MIUI / OxygenOS / Realme UI ЗАХИСТИ ══
 
-  // C1. ResizeObserver на body — ловить float-вікна ColorOS що не змінюють window.innerWidth
+  // C1. ResizeObserver — прив'язаний до АБСОЛЮТНИХ пікселів, а не до screen.*
+  // Realme UI при split/float змінює screen.width разом з вікном,
+  // тому старий підхід (порівняння з screen.width) давав ~1.0 і не спрацьовував.
+  // Рішення: запам'ятовуємо абсолютні розміри body/documentElement у пікселях
+  // одразу після старту і порівнюємо з ними — незалежно від screen.*.
   if(sec.tab&&sec.coloros&&window.ResizeObserver){
-    _baseBodyW=document.body.offsetWidth;
-    _baseBodyH=document.body.offsetHeight;
-    // Затримка 1.5с щоб не зловити первинний layout
     setTimeout(()=>{
       if(!examActive||_resultSubmitted)return;
+      // Знімаємо базові розміри ПІСЛЯ першого layout (затримка RESIZE_OBS_DELAY_MS)
       _baseBodyW=document.body.offsetWidth;
       _baseBodyH=document.body.offsetHeight;
+      const _baseRootW=document.documentElement.clientWidth||_baseBodyW;
+      const _baseRootH=document.documentElement.clientHeight||_baseBodyH;
+
       _resizeObs=new ResizeObserver(entries=>{
         if(!examActive||_resultSubmitted)return;
-        if(Date.now()-_lastSplitViol<5000)return;
+        if(Date.now()-_lastSplitViol<SPLIT_VIOL_COOLDOWN_MS)return;
         for(const en of entries){
           const {width,height}=en.contentRect;
-          // Якщо body раптово став менше ніж 60% від базового — float-вікно
-          if(_baseBodyW>0&&width/_baseBodyW<0.60){
+          const refW=en.target===document.documentElement?_baseRootW:_baseBodyW;
+          const refH=en.target===document.documentElement?_baseRootH:_baseBodyH;
+          // Realme UI split: вікно стає рівно половиною → ratio ~0.5
+          // Float-вікно: може бути ще менше
+          // Поріг 0.72 — консервативний, щоб не ловити системний UI
+          if(refW>0&&width/refW<0.72){
             _lastSplitViol=Date.now();
-            violation('Розділений екран','Виявлено зміну розміру вікна — можливо активовано плаваюче вікно.');
+            violation('Розділений екран','Виявлено зміну розміру вікна — можливо активовано плаваюче або розділене вікно.');
             break;
           }
-          if(_baseBodyH>0&&height/_baseBodyH<0.55){
+          if(refH>0&&height/refH<0.60){
             _lastSplitViol=Date.now();
             violation('Розділений екран','Виявлено зменшення висоти вікна — можливо активовано розділений екран.');
             break;
@@ -915,70 +1046,155 @@ function attachSecurity(){
         }
       });
       _resizeObs.observe(document.body);
-    },1500);
+      _resizeObs.observe(document.documentElement);
+    },RESIZE_OBS_DELAY_MS);
   }
 
-  // C2. devicePixelRatio моніторинг — ColorOS змінює DPR при деяких float-режимах
+  // C2. devicePixelRatio + абсолютний розмір вікна — Realme UI / ColorOS float
+  // Realme UI при float-режимі: DPR може НЕ змінюватись (на відміну від OPPO),
+  // але window.innerWidth змінюється абсолютно (не відносно screen).
+  // Додатково: порівнюємо innerWidth з базовим значенням, записаним при старті.
   if(sec.tab&&sec.coloros){
     _basePixelRatio=window.devicePixelRatio||1;
+    // Базові innerWidth/innerHeight — записуємо після старту тесту
+    const _baseInnerW=window.innerWidth;
+    const _baseInnerH=window.innerHeight;
     _colorosCheckInt=setInterval(()=>{
       if(!examActive||_resultSubmitted)return;
-      if(Date.now()-_lastSplitViol<5000)return;
+      if(Date.now()-_lastSplitViol<SPLIT_VIOL_COOLDOWN_MS)return;
+
+      // Перевірка 1: DPR (OPPO ColorOS, деякі Realme)
       const curDPR=window.devicePixelRatio||1;
-      // Значна зміна DPR під час тесту — ознака масштабування або float-режиму
-      if(Math.abs(curDPR-_basePixelRatio)>0.4){
+      if(Math.abs(curDPR-_basePixelRatio)>0.35){
         _lastSplitViol=Date.now();
-        violation('Плаваюче вікно','Виявлено зміну масштабу екрана — можливо активовано плаваюче вікно ColorOS.');
+        violation('Плаваюче вікно','Виявлено зміну масштабу екрана — можливо активовано плаваюче вікно.');
+        return;
+      }
+
+      // Перевірка 2: innerWidth відносно базового (Realme UI float не змінює screen.*)
+      // Не перевіряємо якщо активний input (клавіатура зменшує innerHeight)
+      const activeTag=(document.activeElement?.tagName||'').toUpperCase();
+      if(['INPUT','TEXTAREA','SELECT'].includes(activeTag))return;
+      const curIW=window.innerWidth;
+      const curIH=window.innerHeight;
+      if(_baseInnerW>0&&curIW/_baseInnerW<0.72){
+        _lastSplitViol=Date.now();
+        violation('Розділений екран','Виявлено зменшення ширини вікна (Realme UI split-screen).');
+        return;
+      }
+      // Висота: поріг нижчий бо системний UI може ховати/показувати навбар
+      if(_baseInnerH>0&&curIH/_baseInnerH<0.55){
+        _lastSplitViol=Date.now();
+        violation('Розділений екран','Виявлено зменшення висоти вікна (Realme UI split-screen).');
       }
     },900);
   }
 
-  // C3. Верхня шторка — touchstart з малим clientY (свайп зверху вниз)
-  // Спрацьовує ПІСЛЯ того як фокус втрачено (шторка відкрилась)
+  // C3. Верхня шторка — Realme UI / ColorOS виправлений детектор
+  // Проблема: на деяких версіях Realme UI + Chrome шторка відкривається
+  // БЕЗ втрати document.hasFocus() — тому стара перевірка не спрацьовувала.
+  // Рішення: замість перевірки hasFocus після свайпу — відстежуємо
+  // зміну visualViewport.height (шторка зменшує доступну висоту) АБО
+  // фіксуємо сам свайп як підозру після короткої паузи незалежно від фокусу.
   if(sec.tab&&sec.coloros){
+    let _notifSwipeDetected=false;
+
     const _onTouchStart=ev=>{
       if(!examActive||_resultSubmitted)return;
       const t=ev.touches[0];
-      if(t)_touchStartY=t.clientY;
+      if(t){_touchStartY=t.clientY;_notifSwipeDetected=false;}
     };
     const _onTouchEnd=ev=>{
       if(!examActive||_resultSubmitted)return;
       const t=ev.changedTouches[0];
       if(!t)return;
       const dy=t.clientY-_touchStartY;
-      // Свайп вниз від самого верху (y < 25px) на довжину > 60px — підозра на шторку
-      if(_touchStartY<25&&dy>60){
+      // Свайп вниз від верхньої зони (< 30px) довжиною > 55px
+      if(_touchStartY<30&&dy>55){
+        _notifSwipeDetected=true;
         clearTimeout(_notifBarTimer);
         _notifBarTimer=setTimeout(()=>{
-          if(!examActive||_resultSubmitted)return;
-          // Перевіряємо чи фокус справді втрачено — якщо так, це шторка
-          if(!document.hasFocus()&&Date.now()-_lastFocusViol>2000){
+          if(!examActive||_resultSubmitted||!_notifSwipeDetected)return;
+          _notifSwipeDetected=false;
+          if(Date.now()-_lastFocusViol<FOCUS_VIOL_COOLDOWN_MS)return;
+
+          // Метод 1: hasFocus втрачено (стандартна поведінка)
+          const focusLost=!document.hasFocus();
+          // Метод 2: visualViewport зменшився (Realme UI — шторка перекриває viewport)
+          const vvShrunk=window.visualViewport&&
+            (window.visualViewport.height/window.innerHeight)<0.88;
+          // Метод 3: document.hidden (деякі версії Realme ставлять hidden при шторці)
+          const hidden=document.hidden;
+
+          if(focusLost||vvShrunk||hidden){
             _lastFocusViol=Date.now();
             violation('Верхня шторка','Виявлено відкриття панелі сповіщень під час тесту.');
             if(payload.secSettings?.blur)blurBody(true);
           }
-        },400);
+        },450);
       }
     };
     document.addEventListener('touchstart',_onTouchStart,{passive:true});
     document.addEventListener('touchend',_onTouchEnd,{passive:true});
+
+    // Додатковий слухач: visualViewport resize — ловить шторку навіть без свайпу
+    // (наприклад, свайп двома пальцями або через бічну кнопку)
+    if(window.visualViewport){
+      let _baseVvH=0;
+      // Записуємо базову висоту після старту
+      setTimeout(()=>{_baseVvH=window.visualViewport.height;},RESIZE_OBS_DELAY_MS);
+      window.visualViewport.addEventListener('resize',()=>{
+        if(!examActive||_resultSubmitted)return;
+        if(Date.now()-_lastFocusViol<FOCUS_VIOL_COOLDOWN_MS)return;
+        if(Date.now()-_lastSplitViol<SPLIT_VIOL_COOLDOWN_MS)return;
+        // Клавіатура — ігноруємо
+        const activeTag=(document.activeElement?.tagName||'').toUpperCase();
+        if(['INPUT','TEXTAREA','SELECT'].includes(activeTag))return;
+        const curVvH=window.visualViewport.height;
+        const winH=window.innerHeight;
+        // Шторка на Realme UI зменшує visualViewport але не innerHeight
+        if(_baseVvH>0&&curVvH/_baseVvH<0.88&&winH>0&&curVvH/winH<0.88){
+          _lastFocusViol=Date.now();
+          violation('Верхня шторка','Виявлено перекриття екрана системним UI (Realme UI).');
+          if(payload.secSettings?.blur)blurBody(true);
+        }
+      });
+    }
   }
 
-  // 5. VisualViewport advanced — висота без фокусу на input
-  if(sec.tab&&window.visualViewport){
+  // 5. VisualViewport advanced + outerWidth — висота без фокусу на input
+  // outerWidth ловить Opera Mobile split коли innerWidth не змінюється
+  if(sec.tab&&(window.visualViewport||window.outerWidth)){
+    const _baseOW=window.outerWidth||window.innerWidth;
+    const _baseOH=window.outerHeight||window.innerHeight;
     _vvCheckInt=setInterval(()=>{
       if(!examActive||_resultSubmitted)return;
-      if(Date.now()-_lastSplitViol<5000)return;
+      if(Date.now()-_lastSplitViol<SPLIT_VIOL_COOLDOWN_MS)return;
       // Перевіряємо чи активний елемент — поле вводу (тоді клавіатура легальна)
       const activeTag=(document.activeElement?.tagName||'').toUpperCase();
       const isInputActive=['INPUT','TEXTAREA','SELECT'].includes(activeTag);
       if(isInputActive)return;
-      const vvH=window.visualViewport.height;
-      const winH=window.innerHeight;
-      // Якщо visualViewport значно менший ніж innerHeight і це не клавіатура
-      if(winH>0&&(vvH/winH)<0.75){
-        _lastSplitViol=Date.now();
-        violation('Плаваюче вікно','Виявлено накладне вікно поверх тесту.');
+
+      if(window.visualViewport){
+        const vvH=window.visualViewport.height;
+        const winH=window.innerHeight;
+        // Якщо visualViewport значно менший ніж innerHeight і це не клавіатура
+        if(winH>0&&(vvH/winH)<0.75){
+          _lastSplitViol=Date.now();
+          violation('Плаваюче вікно','Виявлено накладне вікно поверх тесту.');
+          return;
+        }
+      }
+
+      // Opera Mobile: outerWidth зменшується при split, innerWidth може не змінитись
+      const curOW=window.outerWidth, curOH=window.outerHeight;
+      const saw=window.screen.availWidth||window.screen.width;
+      const sah=window.screen.availHeight||window.screen.height;
+      if(curOW>10&&curOH>10&&saw>0&&sah>0){
+        if((curOW/saw)<0.55||(curOH/sah)<0.55){
+          _lastSplitViol=Date.now();
+          violation('Розділений екран','Виявлено split-screen (Opera/Firefox).');
+        }
       }
     },1000);
   }
@@ -994,33 +1210,71 @@ function attachSecurity(){
 }
 
 let _lastSplitViol=0;
-function checkSplitScreen(){
+let _splitCheckDebounce=null; // debounce для resize-event (не для interval)
+function checkSplitScreen(fromEvent){
   if(!examActive||_resultSubmitted)return;
-  if(Date.now()-_lastSplitViol<5000)return;
-  const ww=window.innerWidth,sw=window.screen.width;
-  const wh=window.innerHeight,sh=window.screen.height;
+  if(Date.now()-_lastSplitViol<SPLIT_VIOL_COOLDOWN_MS)return;
+
+  // Debounce тільки коли викликається з resize-event (не з setInterval)
+  // Щоб не фіксувати split у момент самого resize до завершення анімації
+  if(fromEvent instanceof Event){
+    clearTimeout(_splitCheckDebounce);
+    _splitCheckDebounce=setTimeout(()=>checkSplitScreen(),400);
+    return;
+  }
+
+  const ww=window.innerWidth, wh=window.innerHeight;
+  const sw=window.screen.width, sh=window.screen.height;
+  // screen.availWidth враховує системний UI (навбар тощо) — більш точний
+  const saw=window.screen.availWidth||sw, sah=window.screen.availHeight||sh;
+
+  // ── Метод 1: innerWidth vs screen (стандарт, не працює в Opera при split) ──
   if((ww/sw)<0.55||(wh/sh)<0.55){
     _lastSplitViol=Date.now();
     violation('Розділений екран','Виявлено розділений екран або плаваюче вікно.');
     return;
   }
+
+  // ── Метод 2: outerWidth vs availWidth (Opera Mobile, Firefox) ──
+  // Opera при split-screen: outerWidth стає рівним половині екрану,
+  // але innerWidth може лишатись повним (viewport scaling)
+  const ow=window.outerWidth, oh=window.outerHeight;
+  if(ow>10&&oh>10){
+    if((ow/saw)<0.55||(oh/sah)<0.55){
+      _lastSplitViol=Date.now();
+      violation('Розділений екран','Виявлено зменшення вікна браузера (Opera/Firefox).');
+      return;
+    }
+  }
+
+  // ── Метод 3: documentElement.clientWidth vs innerWidth (Opera floating window) ──
+  // При floating window Opera масштабує вміст — clientWidth менший за innerWidth
+  const cw=document.documentElement.clientWidth;
+  const ch=document.documentElement.clientHeight;
+  if(cw>0&&ww>0&&(cw/ww)<0.75){
+    _lastSplitViol=Date.now();
+    violation('Плаваюче вікно','Виявлено масштабування вмісту — можливо активовано плаваюче вікно.');
+    return;
+  }
+
+  // ── Метод 4: visualViewport (Chrome, Samsung, частково Opera) ──
   if(window.visualViewport){
     const vv=window.visualViewport;
-    // Стандартна перевірка ширини
     if((vv.width*vv.scale)/sw<0.5){
       _lastSplitViol=Date.now();
       violation('Плаваюче вікно','Виявлено плаваюче або накладне вікно.');
       return;
     }
-    // ColorOS: scale відхиляється від 1.0 при float-режимі
+    // ColorOS / Opera: scale відхиляється від 1.0 при float-режимі
     if(Math.abs(vv.scale-1.0)>0.25){
       _lastSplitViol=Date.now();
-      violation('Плаваюче вікно','Виявлено масштабування вікна — можливо активовано float-режим ColorOS.');
+      violation('Плаваюче вікно','Виявлено масштабування вікна — можливо активовано float-режим.');
     }
   }
 }
 function detachSecurity(){
   clearInterval(_splitCheckInt);_splitCheckInt=null;
+  clearTimeout(_splitCheckDebounce);_splitCheckDebounce=null;
   clearInterval(_pipCheckInt);_pipCheckInt=null;
   clearInterval(_vvCheckInt);_vvCheckInt=null;
   clearInterval(_colorosCheckInt);_colorosCheckInt=null;
@@ -1030,7 +1284,9 @@ function detachSecurity(){
   clearTimeout(_notifBarTimer);_notifBarTimer=null;
   if(_resizeObs){_resizeObs.disconnect();_resizeObs=null;}
   if(_rafId){cancelAnimationFrame(_rafId);_rafId=null;}
+  _unlockPortrait(); // знімаємо CSS lock після завершення тесту
   if(window.visualViewport)window.visualViewport.removeEventListener('resize',checkSplitScreen);
+  window.removeEventListener('resize',checkSplitScreen);
   document.removeEventListener('visibilitychange',onVis);
   window.removeEventListener('blur',onBlur);
   document.removeEventListener('contextmenu',onCtx);
@@ -1041,7 +1297,9 @@ function detachSecurity(){
   document.removeEventListener('webkitfullscreenchange',_onFsChange);
   window.removeEventListener('pagehide',_onPageHide);
   window.removeEventListener('pageshow',_onPageShow);
-  if(screen.orientation){try{screen.orientation.removeEventListener('change',()=>{});}catch(_){}}
+  if(screen.orientation){try{if(_onOrientRef)screen.orientation.removeEventListener('change',_onOrientRef);}catch(_){}}
+  else{if(_onOrientRef)window.removeEventListener('orientationchange',_onOrientRef);}
+  _onOrientRef=null;
   // Виходимо з fullscreen якщо були в ньому
   try{if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document).catch(()=>{});}}catch(_){}
   const wl=g('wmLayer');if(wl)wl.innerHTML='';
@@ -1049,7 +1307,7 @@ function detachSecurity(){
 let _lastFocusViol=0;
 function onVis(){
   if(!examActive||_resultSubmitted||!document.hidden)return;
-  if(Date.now()-_lastFocusViol<2000)return;
+  if(Date.now()-_lastFocusViol<FOCUS_VIOL_COOLDOWN_MS)return;
   _lastFocusViol=Date.now();
   violation('Перехід на іншу вкладку','Ви залишили вікно тесту.');
   if(payload.secSettings?.blur)blurBody(true);
@@ -1064,12 +1322,12 @@ function onBlur(){
     if(!examActive||_resultSubmitted||document.hidden){_blurPendingAt=0;return;}
     // Перевіряємо ще раз чи фокус справді втрачений
     if(document.hasFocus()){_blurPendingAt=0;return;}
-    if(Date.now()-_lastFocusViol<2000){_blurPendingAt=0;return;}
+    if(Date.now()-_lastFocusViol<FOCUS_VIOL_COOLDOWN_MS){_blurPendingAt=0;return;}
     _blurPendingAt=0;
     _lastFocusViol=Date.now();
     violation('Втрата фокусу','Перехід до іншого вікна або додатку.');
     if(payload.secSettings?.blur)blurBody(true);
-  },600);
+  },BLUR_GRACE_MS);
 }
 function onCtx(ev){ev.preventDefault();if(!examActive)return;violation('Контекстне меню','Спроба відкрити контекстне меню.');}
 function onCopy(ev){ev.preventDefault();if(!examActive)return;violation('Копіювання','Спроба скопіювати текст тесту.');}
@@ -1085,34 +1343,45 @@ function flashWhite(){
   document.body.appendChild(f);setTimeout(()=>f.remove(),350);
 }
 
-// ══ НОВІ МОБІЛЬНІ ХЕЛПЕРИ ══
+// ══ ORIENTATION + FULLSCREEN HELPERS ══
 
-// Fullscreen request з підтримкою iOS/Android
+function _lockPortrait(){
+  // Оновлюємо _fsEntryTime — щоб _onFsChange ігнорував fullscreenchange від orientation lock
+  _fsEntryTime=Date.now();
+  if(screen.orientation&&screen.orientation.lock){
+    screen.orientation.lock('portrait-primary')
+      .catch(()=>screen.orientation.lock('portrait').catch(()=>{}));
+  }
+}
+function _unlockPortrait(){
+  try{if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock();}catch(_){}
+}
 function _requestFullscreen(){
-  const el=document.documentElement;
-  try{
-    const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
-    if(req){req.call(el).then(()=>{_fsActive=true;}).catch(()=>{_fsActive=false;});}
-  }catch(_){_fsActive=false;}
+  const fsEl=document.documentElement;
+  const req=fsEl.requestFullscreen||fsEl.webkitRequestFullscreen||fsEl.mozRequestFullScreen||fsEl.msRequestFullscreen;
+  if(!req)return;
+  req.call(fsEl)
+    .then(()=>{_fsActive=true;_fsEntryTime=Date.now();_lockPortrait();})
+    .catch(()=>{_fsActive=false;});
 }
 
 // Fullscreen change handler
 function _onFsChange(){
   const isFs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  // Ігноруємо події протягом 3с після входу в fullscreen
+  // Mi Browser випускає fullscreenchange при orientation lock — це не вихід учня
+  if(Date.now()-_fsEntryTime<FS_ENTRY_GRACE_MS)return;
   if(_fsActive&&!isFs&&examActive&&!_resultSubmitted){
-    // Вийшли з fullscreen під час тесту
     _fsActive=false;
     clearTimeout(_fsExitViolTimer);
-    // Даємо 1.5с — може системне сповіщення тимчасово згорнуло
     _fsExitViolTimer=setTimeout(()=>{
       if(!examActive||_resultSubmitted)return;
       const stillFs=!!(document.fullscreenElement||document.webkitFullscreenElement);
       if(!stillFs){
         violation('Вихід з повноекранного режиму','Тест повинен відображатись у повноекранному режимі.');
-        // Намагаємось повернути fullscreen
         setTimeout(()=>{if(examActive&&!_resultSubmitted)_requestFullscreen();},800);
       }
-    },1500);
+    },FS_EXIT_CONFIRM_MS);
   } else if(isFs){
     _fsActive=true;
     clearTimeout(_fsExitViolTimer);
@@ -1131,7 +1400,7 @@ function _onPageShow(ev){
   if(ev.persisted&&_pageHideTs>0){
     const away=Date.now()-_pageHideTs;
     _pageHideTs=0;
-    if(away>1500&&Date.now()-_lastFocusViol>2000){
+    if(away>BFCACHE_AWAY_THRESHOLD_MS&&Date.now()-_lastFocusViol>FOCUS_VIOL_COOLDOWN_MS){
       _lastFocusViol=Date.now();
       violation('Перехід на інший додаток','Ви покинули тест через системну навігацію (iOS).');
       if(payload.secSettings?.blur)blurBody(true);
@@ -1146,12 +1415,12 @@ async function _detectIncognito(){
     const {quota}=await navigator.storage.estimate();
     // В інкогніто Chrome quota ~120MB, Firefox ~0, Safari ~0 або маленьке
     // Нормальний режим: зазвичай >200MB
-    if(quota&&quota<150*1024*1024){
+    if(quota&&quota<INCOGNITO_QUOTA_THRESHOLD){
       // Затримка щоб не зафіксувати до початку тесту
       setTimeout(()=>{
         if(!examActive||_resultSubmitted)return;
         violation('Анонімний режим','Виявлено ознаки приватного/анонімного режиму браузера.');
-      },2000);
+      },INCOGNITO_DETECT_DELAY_MS);
     }
   }catch(_){}
 }
@@ -1172,7 +1441,7 @@ function violation(title,desc){
   g('secDesc').textContent=desc+'\n\nПорушення '+violCount+' з '+(payload.secSettings?.maxviol||3)+'.';
   g('secOverlay').classList.add('show');
   if(violCount>=(payload.secSettings?.maxviol||3)){
-    setTimeout(()=>{dismissSec();finishExam('violations');},1500);
+    setTimeout(()=>{dismissSec();finishExam('violations');},VIOL_AUTO_FINISH_DELAY_MS);
   }
 }
 function dismissSec(){g('secOverlay').classList.remove('show');blurBody(false);}
@@ -1197,13 +1466,15 @@ function finishExam(reason){
   if(_resultSubmitted)return;
   _resultSubmitted=true;
   examActive=false;
+  // Заморожуємо відповіді — після цього жодна консольна маніпуляція не змінить масив
+  try{examAnswers.forEach((_,i)=>Object.freeze(examAnswers[i]));Object.freeze(examAnswers);}catch(_){}
   clearInterval(timerInt);clearInterval(perqInt);
   detachSecurity();
   g('bar').style.display='none';g('progBar').style.display='none';
   document.body.setAttribute('data-bg','0');
 
-  // Scoring
-  let earned=0,totalPts=0;
+  // Scoring — один прохід для earned, totalPts і correctCnt
+  let earned=0,totalPts=0,correctCnt=0;
   examQs.forEach((q,i)=>{
     const pts=q.points||1; totalPts+=pts;
     const ans=examAnswers[i]||[];
@@ -1211,13 +1482,9 @@ function finishExam(reason){
     const ok=q.isMultiple
       ?(ans.length===corr.length&&corr.every(c=>ans.includes(c)))
       :(ans[0]===corr[0]);
-    if(ok)earned+=pts;
+    if(ok){earned+=pts;correctCnt++;}
   });
   const pct=totalPts>0?Math.round(earned/totalPts*100):0;
-  const correctCnt=examQs.filter((q,i)=>{
-    const ans=examAnswers[i]||[],corr=_getCorrect(q);
-    return q.isMultiple?(ans.length===corr.length&&corr.every(c=>ans.includes(c))):(ans[0]===corr[0]);
-  }).length;
 
   // Grade
   const grades=payload.grades||[];
@@ -1246,9 +1513,9 @@ function finishExam(reason){
     nonce:_sessionNonce
   };
   // ══ Час відповідей ══
-  const times=examAnswers._times||[];
+  const times=answerTimes||[];
   const avgTime=times.length?Math.round(times.reduce((a,b)=>a+(b||0),0)/times.length):0;
-  const fastCount=times.filter(t=>t&&t<1500).length;
+  const fastCount=times.filter(t=>t&&t<FAST_ANSWER_THRESHOLD_MS).length;
   const _timing={avg:avgTime,fastCount,times:times.map(t=>Math.round((t||0)/100)*100)};
 
   // Save result
@@ -1271,7 +1538,10 @@ function finishExam(reason){
     }))
   };
   // localStorage fallback — синхронно
-  try{const rs=JSON.parse(localStorage.getItem('sqpro_results')||'[]');rs.unshift(result);localStorage.setItem('sqpro_results',JSON.stringify(rs.slice(0,500)));}catch(e){}
+  try{const rs=JSON.parse(localStorage.getItem('sqpro_results')||'[]');rs.unshift(result);localStorage.setItem('sqpro_results',JSON.stringify(rs.slice(0,RESULTS_LOCAL_LIMIT)));}catch(e){}
+
+  // ── Безпека: після побудови result payload більше не потрібен ──
+  try{payload.grades=null;payload.startedAt=null;}catch(_){}
 
   // ══ HMAC підпис + Firebase (async) ══
   (async()=>{
@@ -1297,6 +1567,14 @@ function finishExam(reason){
 
     try{
       await db.ref('results/'+participantId+'_r').set(result);
+      // Зберігаємо fingerprint щоб заблокувати повторне проходження
+      if(window._examFpKey&&result.sessionId){
+        try{
+          const fd=JSON.parse(localStorage.getItem('sqpro_fp_done')||'{}');
+          fd[result.sessionId]=window._examFpKey;
+          localStorage.setItem('sqpro_fp_done',JSON.stringify(fd));
+        }catch(_){}
+      }
     }catch(e){console.warn('Firebase save failed:',e.message);}
     sendProgress({name:studentName,cls:studentClass,status:'done',pct,grade:grade.l,violations:violCount,current:examQs.length,total:examQs.length});
   })();
